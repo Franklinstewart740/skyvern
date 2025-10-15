@@ -1,0 +1,52 @@
+You are an AI assistant helping convert browser session recordings into structured workflows.
+
+**Task:** Analyze the recorded user interactions and generate a workflow definition with appropriate blocks and parameters.
+
+**Session ID:** {{ session_id }}
+
+**Recorded Interactions:**
+{% if interactions %}
+{% for interaction in interactions %}
+{{ loop.index }}. Type: {{ interaction.interaction_type }}, URL: {{ interaction.url }}
+   Element: {{ interaction.element_selector or interaction.element_xpath or "N/A" }}
+   Data: {{ interaction.interaction_data }}
+   Reasoning: {{ interaction.reasoning or "N/A" }}
+{% endfor %}
+{% else %}
+No interactions recorded yet.
+{% endif %}
+
+**Instructions:**
+1. Analyze the sequence of interactions to understand the user's intent
+2. Group related interactions into logical workflow blocks:
+   - Use "navigation" blocks for URL changes
+   - Use "task" blocks for sequences of actions on a single page
+   - Use "extraction" blocks for data collection
+   - Use "loop" blocks for repeated patterns
+3. Identify values that should be parameterized (URLs, input values, etc.)
+4. Generate reasoning for each block explaining its purpose
+
+**Output Format (JSON):**
+{
+  "blocks": [
+    {
+      "block_type": "navigation|task|extraction|loop",
+      "label": "unique_block_label",
+      "url": "{{ parameterized_url }}",
+      "navigation_goal": "What to achieve (for task blocks)",
+      "data_extraction_goal": "What to extract (for extraction blocks)",
+      "data_schema": { ... } (for extraction blocks),
+      "reasoning": "Why this block is needed"
+    }
+  ],
+  "suggested_parameters": [
+    {
+      "key": "parameter_name",
+      "type": "string|number|json",
+      "description": "What this parameter is for",
+      "default_value": "optional_default"
+    }
+  ]
+}
+
+Generate the workflow structure now:

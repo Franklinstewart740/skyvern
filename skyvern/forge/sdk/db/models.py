@@ -31,6 +31,10 @@ from skyvern.forge.sdk.db.id import (
     generate_credential_id,
     generate_credential_parameter_id,
     generate_debug_session_id,
+    generate_observer_dom_snapshot_id,
+    generate_observer_interaction_id,
+    generate_observer_recording_id,
+    generate_observer_session_id,
     generate_onepassword_credential_parameter_id,
     generate_org_id,
     generate_organization_auth_token_id,
@@ -969,3 +973,77 @@ class ScriptBlockModel(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
+
+
+class ObserverSessionModel(Base):
+    __tablename__ = "observer_sessions"
+    __table_args__ = (
+        Index("ix_observer_sessions_org_created_at", "organization_id", "created_at"),
+        Index("ix_observer_sessions_browser_session_id", "browser_session_id"),
+    )
+
+    observer_session_id = Column(String, primary_key=True, default=generate_observer_session_id)
+    organization_id = Column(String, nullable=False)
+    browser_session_id = Column(String, nullable=True)
+    workflow_permanent_id = Column(String, nullable=True, index=True)
+    generated_workflow_id = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+    description = Column(UnicodeText, nullable=True)
+    status = Column(String, nullable=False, default="recording")
+    metadata = Column(JSON, nullable=True)
+    start_url = Column(String, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+
+class ObserverRecordingModel(Base):
+    __tablename__ = "observer_recordings"
+    __table_args__ = (Index("ix_observer_recordings_session_created", "observer_session_id", "created_at"),)
+
+    observer_recording_id = Column(String, primary_key=True, default=generate_observer_recording_id)
+    observer_session_id = Column(String, nullable=False, index=True)
+    organization_id = Column(String, nullable=False)
+    sequence_number = Column(Integer, nullable=False)
+    recording_type = Column(String, nullable=False)
+    url = Column(String, nullable=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    data = Column(JSON, nullable=True)
+    reasoning = Column(UnicodeText, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class ObserverDOMSnapshotModel(Base):
+    __tablename__ = "observer_dom_snapshots"
+    __table_args__ = (Index("ix_observer_dom_snapshots_recording", "observer_recording_id"),)
+
+    observer_dom_snapshot_id = Column(String, primary_key=True, default=generate_observer_dom_snapshot_id)
+    observer_recording_id = Column(String, nullable=False, index=True)
+    observer_session_id = Column(String, nullable=False)
+    organization_id = Column(String, nullable=False)
+    url = Column(String, nullable=False)
+    html_content = Column(UnicodeText, nullable=True)
+    screenshot_artifact_id = Column(String, nullable=True)
+    metadata = Column(JSON, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class ObserverInteractionModel(Base):
+    __tablename__ = "observer_interactions"
+    __table_args__ = (Index("ix_observer_interactions_recording", "observer_recording_id"),)
+
+    observer_interaction_id = Column(String, primary_key=True, default=generate_observer_interaction_id)
+    observer_recording_id = Column(String, nullable=False, index=True)
+    observer_session_id = Column(String, nullable=False)
+    organization_id = Column(String, nullable=False)
+    interaction_type = Column(String, nullable=False)
+    element_selector = Column(String, nullable=True)
+    element_xpath = Column(String, nullable=True)
+    interaction_data = Column(JSON, nullable=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)

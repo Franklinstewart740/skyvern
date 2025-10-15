@@ -12,6 +12,10 @@ from skyvern.forge.sdk.db.models import (
     AWSSecretParameterModel,
     BitwardenLoginCredentialParameterModel,
     BitwardenSensitiveInformationParameterModel,
+    ObserverDOMSnapshotModel,
+    ObserverInteractionModel,
+    ObserverRecordingModel,
+    ObserverSessionModel,
     OrganizationAuthTokenModel,
     OrganizationModel,
     OutputParameterModel,
@@ -30,6 +34,13 @@ from skyvern.forge.sdk.db.models import (
 from skyvern.forge.sdk.encrypt import encryptor
 from skyvern.forge.sdk.encrypt.base import EncryptMethod
 from skyvern.forge.sdk.models import Step, StepStatus
+from skyvern.forge.sdk.schemas.observer_sessions import (
+    ObserverDOMSnapshot,
+    ObserverInteraction,
+    ObserverRecording,
+    ObserverSession,
+    ObserverSessionStatus,
+)
 from skyvern.forge.sdk.schemas.organizations import (
     AzureClientSecretCredential,
     AzureOrganizationAuthToken,
@@ -627,3 +638,66 @@ def hydrate_action(action_model: ActionModel, empty_element_id: bool = False) ->
         raise ValueError(f"Unsupported action type: {action_model.action_type}")
 
     return action_class(**action_data)
+
+
+def convert_to_observer_session(session_model: ObserverSessionModel) -> ObserverSession:
+    return ObserverSession(
+        observer_session_id=session_model.observer_session_id,
+        organization_id=session_model.organization_id,
+        browser_session_id=session_model.browser_session_id,
+        workflow_permanent_id=session_model.workflow_permanent_id,
+        generated_workflow_id=session_model.generated_workflow_id,
+        title=session_model.title,
+        description=session_model.description,
+        status=ObserverSessionStatus(session_model.status),
+        metadata=session_model.metadata,
+        start_url=session_model.start_url,
+        created_at=session_model.created_at,
+        modified_at=session_model.modified_at,
+        completed_at=session_model.completed_at,
+        deleted_at=session_model.deleted_at,
+    )
+
+
+def convert_to_observer_recording(recording_model: ObserverRecordingModel) -> ObserverRecording:
+    return ObserverRecording(
+        observer_recording_id=recording_model.observer_recording_id,
+        observer_session_id=recording_model.observer_session_id,
+        organization_id=recording_model.organization_id,
+        sequence_number=recording_model.sequence_number,
+        recording_type=recording_model.recording_type,
+        url=recording_model.url,
+        timestamp=recording_model.timestamp,
+        data=recording_model.data,
+        reasoning=recording_model.reasoning,
+        created_at=recording_model.created_at,
+    )
+
+
+def convert_to_observer_dom_snapshot(snapshot_model: ObserverDOMSnapshotModel) -> ObserverDOMSnapshot:
+    return ObserverDOMSnapshot(
+        observer_dom_snapshot_id=snapshot_model.observer_dom_snapshot_id,
+        observer_recording_id=snapshot_model.observer_recording_id,
+        observer_session_id=snapshot_model.observer_session_id,
+        organization_id=snapshot_model.organization_id,
+        url=snapshot_model.url,
+        html_content=snapshot_model.html_content,
+        screenshot_artifact_id=snapshot_model.screenshot_artifact_id,
+        metadata=snapshot_model.metadata,
+        created_at=snapshot_model.created_at,
+    )
+
+
+def convert_to_observer_interaction(interaction_model: ObserverInteractionModel) -> ObserverInteraction:
+    return ObserverInteraction(
+        observer_interaction_id=interaction_model.observer_interaction_id,
+        observer_recording_id=interaction_model.observer_recording_id,
+        observer_session_id=interaction_model.observer_session_id,
+        organization_id=interaction_model.organization_id,
+        interaction_type=interaction_model.interaction_type,
+        element_selector=interaction_model.element_selector,
+        element_xpath=interaction_model.element_xpath,
+        interaction_data=interaction_model.interaction_data,
+        timestamp=interaction_model.timestamp,
+        created_at=interaction_model.created_at,
+    )

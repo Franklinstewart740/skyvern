@@ -14,6 +14,7 @@ import { TaskParameters } from "./routes/tasks/detail/TaskParameters";
 import { TaskRecording } from "./routes/tasks/detail/TaskRecording";
 import { TasksPage } from "./routes/tasks/list/TasksPage";
 import { Debugger } from "@/routes/workflows/debugger/Debugger";
+import { ObserverSessionDetail, ObserverSessionsPage } from "./routes/observer";
 import { WorkflowPage } from "./routes/workflows/WorkflowPage";
 import { WorkflowRun } from "./routes/workflows/WorkflowRun";
 import { WorkflowRunParameters } from "./routes/workflows/WorkflowRunParameters";
@@ -198,6 +199,20 @@ const router = createBrowserRouter([
           {
             index: true,
             element: <Settings />,
+          },
+        ],
+      },
+      {
+        path: "observer",
+        element: <PageLayout />,
+        children: [
+          {
+            index: true,
+            element: <ObserverSessionsPage />,
+          },
+          {
+            path: ":sessionId",
+            element: <ObserverSessionDetail />,
           },
         ],
       },
