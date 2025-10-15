@@ -318,6 +318,7 @@ class Settings(BaseSettings):
 
     ENABLE_LOG_ARTIFACTS: bool = False
     ENABLE_CODE_BLOCK: bool = True
+    ENABLE_MULTI_AGENT_SWARM: bool = False
 
     TASK_BLOCKED_SITE_FALLBACK_URL: str = "https://www.google.com"
 
