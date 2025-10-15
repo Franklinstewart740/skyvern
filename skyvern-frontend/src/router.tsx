@@ -7,6 +7,7 @@ import { RootLayout } from "./routes/root/RootLayout";
 import { Settings } from "./routes/settings/Settings";
 import { CreateNewTaskFormPage } from "./routes/tasks/create/CreateNewTaskFormPage";
 import { RetryTask } from "./routes/tasks/create/retry/RetryTask";
+import { AgentSwarmTab } from "./routes/tasks/detail/AgentSwarmTab";
 import { StepArtifactsLayout } from "./routes/tasks/detail/StepArtifactsLayout";
 import { TaskActions } from "./routes/tasks/detail/TaskActions";
 import { TaskDetails } from "./routes/tasks/detail/TaskDetails";
@@ -89,6 +90,10 @@ const router = createBrowserRouter([
               {
                 path: "diagnostics",
                 element: <StepArtifactsLayout />,
+              },
+              {
+                path: "agent-swarm",
+                element: <AgentSwarmTab />,
               },
             ],
           },
