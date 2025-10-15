@@ -62,6 +62,10 @@ WORKFLOW_PREFIX = "w"
 WORKFLOW_RUN_BLOCK_PREFIX = "wrb"
 WORKFLOW_RUN_PREFIX = "wr"
 WORKFLOW_SCRIPT_PREFIX = "ws"
+OBSERVER_SESSION_PREFIX = "obs"
+OBSERVER_RECORDING_PREFIX = "obr"
+OBSERVER_DOM_SNAPSHOT_PREFIX = "ods"
+OBSERVER_INTERACTION_PREFIX = "oin"
 
 
 def generate_workflow_id() -> str:
@@ -237,6 +241,26 @@ def generate_script_file_id() -> str:
 def generate_script_block_id() -> str:
     int_id = generate_id()
     return f"{SCRIPT_BLOCK_PREFIX}_{int_id}"
+
+
+def generate_observer_session_id() -> str:
+    int_id = generate_id()
+    return f"{OBSERVER_SESSION_PREFIX}_{int_id}"
+
+
+def generate_observer_recording_id() -> str:
+    int_id = generate_id()
+    return f"{OBSERVER_RECORDING_PREFIX}_{int_id}"
+
+
+def generate_observer_dom_snapshot_id() -> str:
+    int_id = generate_id()
+    return f"{OBSERVER_DOM_SNAPSHOT_PREFIX}_{int_id}"
+
+
+def generate_observer_interaction_id() -> str:
+    int_id = generate_id()
+    return f"{OBSERVER_INTERACTION_PREFIX}_{int_id}"
 
 
 ############# Helper functions below ##############
