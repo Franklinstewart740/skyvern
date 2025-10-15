@@ -1,0 +1,348 @@
+---
+title: Deployment Overview
+subtitle: Deploy Skyvern in various environments
+slug: deployment/overview
+---
+
+# Deployment Guide
+
+Skyvern can be deployed in multiple configurations depending on your needs:
+
+- **Skyvern Cloud**: Fully managed SaaS platform (recommended for quick start)
+- **Local Development**: Single machine setup for development and testing
+- **Docker Compose**: Multi-container setup for small to medium deployments
+- **Kubernetes**: Production-grade orchestration for large-scale deployments
+- **Cloud Providers**: AWS, GCP, Azure deployment guides
+
+## Deployment Options Comparison
+
+| Feature | Skyvern Cloud | Local | Docker Compose | Kubernetes |
+|---------|--------------|-------|----------------|------------|
+| Setup Time | < 5 minutes | 15-30 minutes | 10-20 minutes | 1-2 hours |
+| Maintenance | None | Manual | Manual | Automated |
+| Scalability | Automatic | Limited | Moderate | High |
+| Cost | Pay-as-you-go | Infrastructure only | Infrastructure only | Infrastructure + Management |
+| Anti-bot Detection | ✅ Included | ❌ Not included | ❌ Not included | ❌ Not included |
+| Proxy Network | ✅ Included | ❌ Not included | ❌ Not included | ❌ Not included |
+| CAPTCHA Solving | ✅ Included | ❌ Not included | ❌ Not included | ❌ Not included |
+
+## Quick Start by Deployment Type
+
+### Skyvern Cloud (Recommended)
+
+1. Sign up at [app.skyvern.com](https://app.skyvern.com)
+2. Get your API key from Settings
+3. Use the SDK or API:
+
+```python
+from skyvern import Skyvern
+
+skyvern = Skyvern(api_key="YOUR_API_KEY")
+await skyvern.run_task(prompt="Your automation task")
+```
+
+**Best for**: Quick start, production use without infrastructure management
+
+### Local Development
+
+1. Install dependencies:
+```bash
+# Python 3.11+ required
+pip install skyvern
+```
+
+2. Initialize and run:
+```bash
+skyvern quickstart
+```
+
+**Best for**: Development, testing, learning Skyvern
+
+See [Local Setup Guide](/deployment/local-setup) for details.
+
+### Docker Compose
+
+1. Clone the repository
+2. Configure environment variables
+3. Start services:
+
+```bash
+docker compose up -d
+```
+
+**Best for**: Small teams, staging environments, isolated deployments
+
+See [Docker Compose Guide](/deployment/docker-compose) for details.
+
+### Kubernetes
+
+1. Set up Kubernetes cluster
+2. Apply Skyvern manifests
+3. Configure ingress and storage
+
+**Best for**: Large-scale production deployments, high availability
+
+See [Kubernetes Guide](/deployment/kubernetes) for details.
+
+## System Requirements
+
+### Minimum Requirements (Local/Small Deployment)
+
+- **CPU**: 4 cores
+- **RAM**: 8 GB
+- **Storage**: 50 GB SSD
+- **OS**: Ubuntu 20.04+, macOS 12+, Windows 10+ (with WSL2)
+
+### Recommended Requirements (Production)
+
+- **CPU**: 8+ cores
+- **RAM**: 16+ GB
+- **Storage**: 100+ GB SSD
+- **OS**: Ubuntu 22.04 LTS
+
+### Browser Requirements
+
+Skyvern uses Playwright for browser automation. Browsers are installed automatically, but require additional storage:
+
+- Chrome/Chromium: ~300 MB
+- Firefox: ~200 MB
+- WebKit: ~150 MB
+
+## Architecture Components
+
+A typical Skyvern deployment includes:
+
+```
+┌─────────────────────────────────────────┐
+│            Load Balancer                 │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│         Skyvern API Servers              │
+│  (FastAPI, horizontally scalable)       │
+└─────────────────────────────────────────┘
+              │
+      ┌───────┴───────┬──────────┐
+      ▼               ▼          ▼
+┌──────────┐   ┌──────────┐  ┌──────────┐
+│PostgreSQL│   │  Redis   │  │    S3    │
+│  (Data)  │   │ (Cache)  │  │(Artifacts)│
+└──────────┘   └──────────┘  └──────────┘
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│    Task Queue (Temporal/Dramatiq)       │
+└─────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│         Browser Workers                  │
+│  (Playwright, isolated instances)       │
+└─────────────────────────────────────────┘
+```
+
+### Core Services
+
+1. **API Server**: Handles HTTP requests, WebSocket connections
+2. **PostgreSQL**: Stores tasks, workflows, credentials, runs
+3. **Redis**: Session state, rate limiting, distributed locks
+4. **S3 Storage**: Screenshots, downloaded files, artifacts
+5. **Task Queue**: Distributed task execution
+6. **Browser Workers**: Execute automation tasks
+
+### Optional Services
+
+- **Frontend**: React UI for monitoring and management
+- **Monitoring**: Prometheus, Grafana for observability
+- **Logging**: ELK stack or CloudWatch for centralized logs
+
+## Security Considerations
+
+### Network Security
+
+- Use HTTPS/TLS for all external connections
+- Restrict database access to internal network
+- Use VPN or private networking for sensitive deployments
+
+### Secrets Management
+
+- Store API keys in environment variables or secret managers
+- Use encrypted credential vault for passwords and tokens
+- Rotate secrets regularly
+
+### Access Control
+
+- Implement API key authentication
+- Use role-based access control (RBAC)
+- Enable audit logging
+
+### Browser Security
+
+- Run browser instances in sandboxed containers
+- Limit browser resource usage
+- Clean up browser data after tasks
+
+## Monitoring and Observability
+
+### Health Checks
+
+Skyvern provides health check endpoints:
+
+```bash
+# API health
+curl http://localhost:8000/health
+
+# Database connectivity
+curl http://localhost:8000/health/db
+
+# Redis connectivity
+curl http://localhost:8000/health/redis
+```
+
+### Metrics
+
+Key metrics to monitor:
+
+- **Task throughput**: Tasks completed per hour
+- **Success rate**: Percentage of successful task completions
+- **Average task duration**: Time per task
+- **Browser instance count**: Active browser sessions
+- **API response time**: Latency of API endpoints
+- **Queue depth**: Pending tasks in queue
+
+### Logging
+
+Skyvern uses structured logging (structlog):
+
+```python
+# Log levels
+LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# Log format
+LOG_FORMAT=json  # json or text
+```
+
+## Scaling Strategies
+
+### Vertical Scaling
+
+Increase resources on existing servers:
+- More CPU cores for parallel task execution
+- More RAM for browser instances
+- Faster storage for artifact handling
+
+### Horizontal Scaling
+
+Add more servers:
+- **API Servers**: Stateless, easy to scale
+- **Browser Workers**: Linear scaling with task load
+- **Database**: Read replicas for query performance
+
+### Auto-scaling
+
+Kubernetes-based auto-scaling:
+- Scale based on CPU/memory usage
+- Scale based on queue depth
+- Scale based on task throughput
+
+## Backup and Disaster Recovery
+
+### Database Backups
+
+```bash
+# PostgreSQL backup
+pg_dump skyvern_db > backup_$(date +%Y%m%d).sql
+
+# Automated backups (cron)
+0 2 * * * pg_dump skyvern_db > /backups/backup_$(date +\%Y\%m\%d).sql
+```
+
+### Artifact Backups
+
+S3 buckets with versioning enabled:
+
+```bash
+aws s3 sync s3://skyvern-artifacts s3://skyvern-artifacts-backup --storage-class GLACIER
+```
+
+### Configuration Backups
+
+Version control your configuration:
+- Environment files
+- Docker Compose files
+- Kubernetes manifests
+
+## Upgrade Procedures
+
+### Rolling Updates
+
+1. Backup database
+2. Update API servers one at a time
+3. Run database migrations
+4. Update browser workers
+5. Verify functionality
+
+### Blue-Green Deployment
+
+1. Set up new environment with updated version
+2. Run smoke tests
+3. Switch traffic to new environment
+4. Monitor for issues
+5. Keep old environment for rollback
+
+### Database Migrations
+
+```bash
+# Apply migrations
+alembic upgrade head
+
+# Rollback if needed
+alembic downgrade -1
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: Tasks stuck in "running" state
+
+**Solution**: Check browser worker health, restart if needed
+
+**Issue**: Database connection errors
+
+**Solution**: Check connection pool settings, increase max connections
+
+**Issue**: Out of memory errors
+
+**Solution**: Reduce concurrent browser instances or increase server RAM
+
+**Issue**: Slow task execution
+
+**Solution**: Check LLM API latency, consider using faster models or caching
+
+### Debug Mode
+
+Enable debug logging:
+
+```bash
+export LOG_LEVEL=DEBUG
+export SKYVERN_DEBUG=true
+```
+
+### Support
+
+- [Discord Community](https://discord.gg/fG2XXEuQX3)
+- [GitHub Issues](https://github.com/Skyvern-AI/skyvern/issues)
+- [Documentation](https://www.skyvern.com/docs)
+- [Email Support](mailto:support@skyvern.com)
+
+## Next Steps
+
+Choose your deployment method:
+
+- [Local Setup Guide](/deployment/local-setup) - Development and testing
+- [Docker Compose Guide](/deployment/docker-compose) - Container-based deployment
+- [Kubernetes Guide](/deployment/kubernetes) - Production orchestration
+- [Cloud Deployment Guides](/deployment/cloud) - AWS, GCP, Azure
+- [Environment Variables Reference](/deployment/environment-variables) - Complete configuration guide

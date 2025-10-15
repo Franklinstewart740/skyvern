@@ -1,0 +1,518 @@
+---
+title: Benchmarking and Evaluation
+subtitle: Evaluate and benchmark Skyvern's performance
+slug: getting-started/benchmarking-guide
+---
+
+# Benchmarking and Evaluation Guide
+
+Skyvern includes built-in evaluation tools to measure performance on web navigation tasks. This guide covers how to run benchmarks, evaluate custom tasks, and measure automation quality.
+
+## Skyvern's Benchmark Performance
+
+Skyvern has state-of-the-art performance on industry-standard web agent benchmarks:
+
+### WebBench Results
+
+[WebBench](https://webbench.ai) is a comprehensive benchmark for AI browser agents.
+
+**Overall Performance: 64.4% accuracy** (State-of-the-art)
+
+<p align="center">
+  <img src="../images/performance/webbench_overall.png" alt="WebBench Overall Performance"/>
+</p>
+
+### WRITE Tasks Performance
+
+Skyvern excels at WRITE tasks (form filling, logging in, downloading files) - the primary use case for RPA automation.
+
+<p align="center">
+  <img src="../images/performance/webbench_write.png" alt="WebBench WRITE Task Performance"/>
+</p>
+
+### WebVoyager Results
+
+Skyvern achieves **85.8% success rate** on the WebVoyager benchmark, demonstrating superior web navigation capabilities.
+
+Read the full technical report: [Skyvern 2.0 Technical Report](https://www.skyvern.com/blog/skyvern-2-0-state-of-the-art-web-navigation-with-85-8-on-webvoyager-eval/)
+
+## Evaluation Framework
+
+### Directory Structure
+
+```
+evaluation/
+├── core/
+│   ├── __init__.py        # Core evaluation logic
+│   └── utils.py           # Helper functions
+├── datasets/
+│   ├── webvoyager_tasks.jsonl
+│   └── webvoyager_reference_answer.json
+├── results/
+│   └── webvoyager-*.md    # Evaluation results
+└── script/
+    └── run_evaluation.py   # Evaluation runner
+```
+
+## Running Benchmarks
+
+### Prerequisites
+
+1. **Set up Skyvern:**
+```bash
+pip install skyvern
+skyvern quickstart
+```
+
+2. **Configure LLM provider:**
+```bash
+skyvern init llm
+```
+
+3. **Ensure services are running:**
+```bash
+skyvern run all
+```
+
+### Run WebVoyager Evaluation
+
+```bash
+cd evaluation/script
+python run_evaluation.py --dataset webvoyager --output-dir ../results/
+```
+
+**Arguments:**
+- `--dataset`: Dataset to use (`webvoyager`, `webbench`, or custom)
+- `--output-dir`: Directory to save results
+- `--task-ids`: Specific task IDs to evaluate (optional)
+- `--llm-key`: Override LLM model for evaluation
+- `--max-steps`: Maximum steps per task (default: 25)
+- `--timeout`: Task timeout in seconds (default: 600)
+
+### Run Custom Benchmark
+
+Create a custom dataset file (`custom_tasks.jsonl`):
+
+```jsonl
+{"task_id": "task_1", "intent": "Find the price of iPhone 15 Pro on Apple's website", "start_url": "https://www.apple.com", "expected_result": "Price extracted"}
+{"task_id": "task_2", "intent": "Search for 'AI safety' papers on arXiv", "start_url": "https://arxiv.org", "expected_result": "Search results displayed"}
+```
+
+Run evaluation:
+
+```bash
+python run_evaluation.py \
+  --dataset custom \
+  --dataset-file ./custom_tasks.jsonl \
+  --output-dir ./custom_results/
+```
+
+## Evaluation Metrics
+
+### Success Criteria
+
+Tasks are evaluated on multiple criteria:
+
+1. **Goal Completion**: Did the task achieve its stated objective?
+2. **Correctness**: Are the extracted data accurate?
+3. **Efficiency**: Number of steps taken vs optimal path
+4. **Error Rate**: Frequency of failed actions or exceptions
+
+### Metrics Computed
+
+- **Success Rate**: Percentage of completed tasks
+- **Average Steps**: Mean number of steps per task
+- **Average Duration**: Mean task execution time
+- **Error Rate**: Percentage of tasks with errors
+- **Data Accuracy**: Correctness of extracted information (if ground truth available)
+
+### Output Format
+
+Results are saved in Markdown format:
+
+```markdown
+# WebVoyager Evaluation Results
+
+## Summary
+- Total Tasks: 100
+- Successful: 86
+- Failed: 14
+- Success Rate: 86%
+- Average Steps: 12.3
+- Average Duration: 45.2s
+
+## Task-by-Task Results
+### Task 1: Find product price
+- Status: ✅ Success
+- Steps: 8
+- Duration: 32s
+- Output: {"price": "$999"}
+
+### Task 2: Fill out form
+- Status: ❌ Failed
+- Steps: 15
+- Duration: 78s
+- Error: Form submission timeout
+```
+
+## Custom Evaluation Scenarios
+
+### Scenario 1: E-commerce Automation
+
+Create a benchmark for e-commerce tasks:
+
+```python
+# ecommerce_benchmark.py
+import asyncio
+import time
+from skyvern import Skyvern
+
+async def run_ecommerce_benchmark():
+    skyvern = Skyvern()
+    
+    tasks = [
+        {
+            "name": "Product Search",
+            "url": "https://example-store.com",
+            "prompt": "Search for 'wireless headphones' and extract the top 5 results",
+            "expected_fields": ["title", "price", "rating"]
+        },
+        {
+            "name": "Add to Cart",
+            "url": "https://example-store.com/product/123",
+            "prompt": "Add this product to cart and proceed to checkout",
+            "expected_state": "checkout_page"
+        },
+        # Add more tasks...
+    ]
+    
+    results = []
+    for task in tasks:
+        start_time = time.time()
+        try:
+            result = await skyvern.run_task(
+                url=task["url"],
+                prompt=task["prompt"],
+                max_steps=20
+            )
+            duration = time.time() - start_time
+            success = validate_result(result, task["expected_fields"])
+            results.append({
+                "task": task["name"],
+                "success": success,
+                "duration": duration,
+                "steps": len(result.steps)
+            })
+        except Exception as e:
+            results.append({
+                "task": task["name"],
+                "success": False,
+                "error": str(e)
+            })
+    
+    return results
+
+asyncio.run(run_ecommerce_benchmark())
+```
+
+### Scenario 2: Form Filling Accuracy
+
+Test form filling across different websites:
+
+```python
+# form_filling_benchmark.py
+async def benchmark_form_filling():
+    test_sites = [
+        "https://form.io/examples",
+        "https://www.typeform.com/templates/",
+        "https://docs.google.com/forms/",
+    ]
+    
+    form_data = {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+1-555-0123",
+        "address": "123 Main St, City, State 12345"
+    }
+    
+    skyvern = Skyvern()
+    results = []
+    
+    for site in test_sites:
+        task = await skyvern.run_task(
+            url=site,
+            prompt=f"Fill out the form with: {form_data}",
+            data_extraction_schema={
+                "type": "object",
+                "properties": {
+                    "fields_filled": {"type": "array"},
+                    "submission_status": {"type": "string"}
+                }
+            }
+        )
+        
+        results.append({
+            "site": site,
+            "success": task.status == "completed",
+            "fields_filled": task.extracted_data.get("fields_filled", []),
+            "steps": len(task.steps)
+        })
+    
+    return results
+```
+
+### Scenario 3: Cross-Browser Compatibility
+
+Test automation across different browsers:
+
+```python
+# cross_browser_benchmark.py
+async def benchmark_cross_browser():
+    browsers = ["chromium", "firefox", "webkit"]
+    test_url = "https://example.com/complex-form"
+    
+    results = {}
+    for browser in browsers:
+        skyvern = Skyvern(browser_type=browser)
+        
+        task = await skyvern.run_task(
+            url=test_url,
+            prompt="Complete the registration form"
+        )
+        
+        results[browser] = {
+            "success": task.status == "completed",
+            "duration": task.duration_seconds,
+            "steps": len(task.steps)
+        }
+    
+    return results
+```
+
+## Performance Optimization
+
+### LLM Model Comparison
+
+Compare different LLM models:
+
+```python
+async def compare_llm_models():
+    models = [
+        "ANTHROPIC_CLAUDE4_SONNET",
+        "ANTHROPIC_CLAUDE3.5_SONNET",
+        "OPENAI_GPT4O",
+        "OPENAI_GPT4O_MINI"
+    ]
+    
+    test_task = {
+        "url": "https://example.com",
+        "prompt": "Find and extract all product prices"
+    }
+    
+    results = []
+    for model in models:
+        skyvern = Skyvern(llm_key=model)
+        
+        start = time.time()
+        task = await skyvern.run_task(**test_task)
+        duration = time.time() - start
+        
+        results.append({
+            "model": model,
+            "success": task.status == "completed",
+            "duration": duration,
+            "cost_estimate": calculate_cost(task, model)
+        })
+    
+    return results
+```
+
+### Speed vs Accuracy Tradeoffs
+
+Test different timeout and step limits:
+
+```python
+async def benchmark_speed_accuracy():
+    configurations = [
+        {"max_steps": 10, "timeout": 30},
+        {"max_steps": 20, "timeout": 60},
+        {"max_steps": 50, "timeout": 120},
+    ]
+    
+    results = []
+    for config in configurations:
+        task = await skyvern.run_task(
+            url="https://complex-site.com",
+            prompt="Extract all data",
+            max_steps=config["max_steps"],
+            timeout=config["timeout"]
+        )
+        
+        results.append({
+            "config": config,
+            "success": task.status == "completed",
+            "duration": task.duration_seconds,
+            "data_completeness": evaluate_data_quality(task.extracted_data)
+        })
+    
+    return results
+```
+
+## Analyzing Results
+
+### Generate Report
+
+```python
+def generate_benchmark_report(results, output_file="report.md"):
+    total_tasks = len(results)
+    successful = sum(1 for r in results if r["success"])
+    success_rate = (successful / total_tasks) * 100
+    avg_duration = sum(r["duration"] for r in results) / total_tasks
+    avg_steps = sum(r["steps"] for r in results) / total_tasks
+    
+    report = f"""
+# Benchmark Report
+
+## Summary
+- Total Tasks: {total_tasks}
+- Successful: {successful}
+- Failed: {total_tasks - successful}
+- Success Rate: {success_rate:.1f}%
+- Average Duration: {avg_duration:.1f}s
+- Average Steps: {avg_steps:.1f}
+
+## Detailed Results
+"""
+    
+    for result in results:
+        status = "✅" if result["success"] else "❌"
+        report += f"\n### {result['task']}\n"
+        report += f"- Status: {status}\n"
+        report += f"- Duration: {result['duration']:.1f}s\n"
+        report += f"- Steps: {result['steps']}\n"
+    
+    with open(output_file, "w") as f:
+        f.write(report)
+    
+    return report
+```
+
+### Visualize Performance
+
+```python
+import matplotlib.pyplot as plt
+
+def visualize_benchmark_results(results):
+    # Success rate by category
+    categories = [r["category"] for r in results]
+    success_rates = [r["success_rate"] for r in results]
+    
+    plt.figure(figsize=(10, 6))
+    plt.bar(categories, success_rates)
+    plt.xlabel("Task Category")
+    plt.ylabel("Success Rate (%)")
+    plt.title("Skyvern Performance by Task Category")
+    plt.ylim(0, 100)
+    plt.savefig("benchmark_results.png")
+```
+
+## Continuous Evaluation
+
+### Set Up Automated Benchmarking
+
+Create a CI/CD pipeline to run benchmarks on every release:
+
+```yaml
+# .github/workflows/benchmark.yml
+name: Benchmark
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+      
+      - name: Install Skyvern
+        run: pip install skyvern
+      
+      - name: Run Benchmarks
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd evaluation/script
+          python run_evaluation.py --dataset webvoyager
+      
+      - name: Upload Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: benchmark-results
+          path: evaluation/results/
+```
+
+## Best Practices
+
+### Benchmark Design
+
+1. **Realistic Tasks**: Use real-world scenarios
+2. **Diverse Websites**: Test across different site structures
+3. **Clear Success Criteria**: Define measurable outcomes
+4. **Reproducibility**: Use consistent test data
+5. **Version Control**: Track benchmark results over time
+
+### Evaluation Guidelines
+
+1. **Isolate Variables**: Test one change at a time
+2. **Multiple Runs**: Average results across 3-5 runs
+3. **Statistical Significance**: Use enough samples
+4. **Document Context**: Note LLM models, timeouts, etc.
+5. **Compare Baselines**: Track performance trends
+
+### Cost Optimization
+
+1. **Use Caching**: Cache LLM responses for repeated evaluations
+2. **Tiered Testing**: Quick smoke tests before full benchmarks
+3. **Secondary LLMs**: Use cheaper models where appropriate
+4. **Selective Benchmarking**: Focus on regression-prone areas
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: Evaluation tasks timing out
+
+**Solution**: Increase timeout or reduce max_steps:
+```python
+python run_evaluation.py --timeout 900 --max-steps 30
+```
+
+**Issue**: Inconsistent results across runs
+
+**Solution**: Set LLM temperature to 0 for deterministic behavior:
+```bash
+export LLM_CONFIG_TEMPERATURE=0
+```
+
+**Issue**: High failure rate
+
+**Solution**: Check logs for common failure patterns:
+```bash
+tail -f log/skyvern.log | grep ERROR
+```
+
+## Next Steps
+
+- [Architecture Guide](/getting-started/architecture-guide) - Understand the system
+- [Visual Reasoning Tutorial](/getting-started/visual-reasoning-tutorial) - Build better workflows
+- [Observability](/observability/overview) - Monitor production performance
+- [GitHub Issues](https://github.com/Skyvern-AI/skyvern/issues) - Report benchmark issues

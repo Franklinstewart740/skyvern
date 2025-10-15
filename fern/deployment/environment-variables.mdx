@@ -1,0 +1,609 @@
+---
+title: Environment Variables Reference
+subtitle: Complete guide to configuring Skyvern
+slug: deployment/environment-variables
+---
+
+# Environment Variables Reference
+
+This guide provides a comprehensive reference for all environment variables used to configure Skyvern.
+
+## Quick Setup
+
+Generate a `.env` file automatically:
+
+```bash
+skyvern init llm
+```
+
+This interactive CLI will guide you through configuring your LLM provider and other essential settings.
+
+## Core Configuration
+
+### Application Settings
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `ENV` | Environment name (development, staging, production) | String | `development` | No |
+| `LOG_LEVEL` | Logging level | String | `INFO` | No |
+| `LOG_FORMAT` | Log output format | String | `json` | No |
+| `SKYVERN_DEBUG` | Enable debug mode | Boolean | `false` | No |
+| `PORT` | API server port | Integer | `8000` | No |
+| `HOST` | API server host | String | `0.0.0.0` | No |
+| `ALLOWED_ORIGINS` | CORS allowed origins (comma-separated) | String | `*` | No |
+
+**Example:**
+```bash
+ENV=production
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+PORT=8000
+HOST=0.0.0.0
+ALLOWED_ORIGINS=https://app.skyvern.com,https://admin.skyvern.com
+```
+
+### API Configuration
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `API_KEY` | Default API key for authentication | String | - | No |
+| `ENABLE_API_KEY_AUTH` | Require API key authentication | Boolean | `true` | No |
+| `API_KEY_HEADER` | Header name for API key | String | `x-api-key` | No |
+| `MAX_REQUEST_SIZE` | Maximum request body size (bytes) | Integer | `10485760` | No |
+| `REQUEST_TIMEOUT` | Request timeout (seconds) | Integer | `300` | No |
+
+**Example:**
+```bash
+ENABLE_API_KEY_AUTH=true
+API_KEY_HEADER=x-api-key
+MAX_REQUEST_SIZE=20971520  # 20MB
+REQUEST_TIMEOUT=600  # 10 minutes
+```
+
+## LLM Provider Configuration
+
+### OpenAI
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_OPENAI` | Register OpenAI models | Boolean | No |
+| `OPENAI_API_KEY` | OpenAI API key | String | Yes (if enabled) |
+| `OPENAI_API_BASE` | Custom API base URL | String | No |
+| `OPENAI_ORGANIZATION` | Organization ID | String | No |
+
+**Recommended Models:**
+- `OPENAI_GPT4O` - GPT-4o (best performance)
+- `OPENAI_GPT4O_MINI` - GPT-4o-mini (faster, cheaper)
+- `OPENAI_O1_MINI` - O1-mini (reasoning tasks)
+- `OPENAI_O3` - O3 (advanced reasoning)
+
+**Example:**
+```bash
+ENABLE_OPENAI=true
+OPENAI_API_KEY=sk-proj-xxx
+LLM_KEY=OPENAI_GPT4O
+SECONDARY_LLM_KEY=OPENAI_GPT4O_MINI
+```
+
+### Anthropic
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_ANTHROPIC` | Register Anthropic models | Boolean | No |
+| `ANTHROPIC_API_KEY` | Anthropic API key | String | Yes (if enabled) |
+
+**Recommended Models:**
+- `ANTHROPIC_CLAUDE3.5_SONNET` - Claude 3.5 Sonnet
+- `ANTHROPIC_CLAUDE3.7_SONNET` - Claude 3.7 Sonnet  
+- `ANTHROPIC_CLAUDE4_OPUS` - Claude 4 Opus (highest capability)
+- `ANTHROPIC_CLAUDE4_SONNET` - Claude 4 Sonnet
+
+**Example:**
+```bash
+ENABLE_ANTHROPIC=true
+ANTHROPIC_API_KEY=sk-ant-xxx
+LLM_KEY=ANTHROPIC_CLAUDE4_SONNET
+SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+```
+
+### Azure OpenAI
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_AZURE` | Register Azure OpenAI models | Boolean | No |
+| `AZURE_API_KEY` | Azure deployment API key | String | Yes (if enabled) |
+| `AZURE_DEPLOYMENT` | Azure deployment name | String | Yes (if enabled) |
+| `AZURE_API_BASE` | Azure API base URL | String | Yes (if enabled) |
+| `AZURE_API_VERSION` | Azure API version | String | Yes (if enabled) |
+
+**Recommended Model:**
+- `AZURE_OPENAI`
+
+**Example:**
+```bash
+ENABLE_AZURE=true
+AZURE_API_KEY=your-azure-key
+AZURE_DEPLOYMENT=skyvern-gpt4o
+AZURE_API_BASE=https://your-resource.openai.azure.com/
+AZURE_API_VERSION=2024-02-01
+LLM_KEY=AZURE_OPENAI
+```
+
+### AWS Bedrock
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_BEDROCK` | Register AWS Bedrock models | Boolean | No |
+| `AWS_REGION` | AWS region | String | No |
+| `AWS_ACCESS_KEY_ID` | AWS access key | String | No* |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | String | No* |
+
+*Uses boto3 default credential chain if not provided
+
+**Recommended Models:**
+- `BEDROCK_ANTHROPIC_CLAUDE3.7_SONNET_INFERENCE_PROFILE`
+- `BEDROCK_ANTHROPIC_CLAUDE4_OPUS_INFERENCE_PROFILE`
+- `BEDROCK_ANTHROPIC_CLAUDE4_SONNET_INFERENCE_PROFILE`
+
+**Example:**
+```bash
+ENABLE_BEDROCK=true
+AWS_REGION=us-east-1
+LLM_KEY=BEDROCK_ANTHROPIC_CLAUDE4_SONNET_INFERENCE_PROFILE
+```
+
+### Google Gemini
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_GEMINI` | Register Gemini models | Boolean | No |
+| `GEMINI_API_KEY` | Google Gemini API key | String | Yes (if enabled) |
+
+**Recommended Models:**
+- `GEMINI_2.5_PRO_PREVIEW` - Gemini 2.5 Pro
+- `GEMINI_2.5_FLASH_PREVIEW` - Gemini 2.5 Flash (faster)
+
+**Example:**
+```bash
+ENABLE_GEMINI=true
+GEMINI_API_KEY=your-gemini-api-key
+LLM_KEY=GEMINI_2.5_PRO_PREVIEW
+```
+
+### Ollama (Local Models)
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_OLLAMA` | Register Ollama models | Boolean | No |
+| `OLLAMA_SERVER_URL` | Ollama server URL | String | Yes (if enabled) |
+| `OLLAMA_MODEL` | Model name to use | String | Yes (if enabled) |
+
+**Example:**
+```bash
+ENABLE_OLLAMA=true
+OLLAMA_SERVER_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b-instruct
+LLM_KEY=OLLAMA
+```
+
+**Note:** Ollama does not currently support vision models, limiting Skyvern functionality.
+
+### OpenRouter
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_OPENROUTER` | Register OpenRouter models | Boolean | No |
+| `OPENROUTER_API_KEY` | OpenRouter API key | String | Yes (if enabled) |
+| `OPENROUTER_MODEL` | Model name | String | Yes (if enabled) |
+| `OPENROUTER_API_BASE` | OpenRouter API base | String | No |
+
+**Example:**
+```bash
+ENABLE_OPENROUTER=true
+OPENROUTER_API_KEY=sk-or-xxx
+OPENROUTER_MODEL=anthropic/claude-4-sonnet
+LLM_KEY=OPENROUTER
+```
+
+### OpenAI-Compatible
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_OPENAI_COMPATIBLE` | Register custom endpoint | Boolean | No |
+| `OPENAI_COMPATIBLE_API_KEY` | API key for endpoint | String | No |
+| `OPENAI_COMPATIBLE_API_BASE` | Custom API base URL | String | Yes (if enabled) |
+| `OPENAI_COMPATIBLE_MODEL_NAME` | Model name | String | Yes (if enabled) |
+
+**Example:**
+```bash
+ENABLE_OPENAI_COMPATIBLE=true
+OPENAI_COMPATIBLE_API_BASE=https://your-llm-api.com/v1
+OPENAI_COMPATIBLE_MODEL_NAME=custom-model
+OPENAI_COMPATIBLE_API_KEY=your-api-key
+LLM_KEY=OPENAI_COMPATIBLE
+```
+
+### Primary and Secondary LLM
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `LLM_KEY` | Primary LLM for heavy tasks | String | Yes |
+| `SECONDARY_LLM_KEY` | Secondary LLM for light tasks | String | No |
+
+**Best Practices:**
+- Use powerful models (GPT-4o, Claude 4 Sonnet) for primary LLM
+- Use faster/cheaper models (GPT-4o-mini, Claude 3.5 Sonnet) for secondary LLM
+
+**Example:**
+```bash
+LLM_KEY=ANTHROPIC_CLAUDE4_SONNET
+SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+```
+
+## Database Configuration
+
+### PostgreSQL
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `DATABASE_STRING` | PostgreSQL connection string | String | - | Yes |
+| `DATABASE_POOL_SIZE` | Connection pool size | Integer | `10` | No |
+| `DATABASE_MAX_OVERFLOW` | Max overflow connections | Integer | `20` | No |
+| `DATABASE_POOL_TIMEOUT` | Pool timeout (seconds) | Integer | `30` | No |
+| `DATABASE_POOL_RECYCLE` | Connection recycle time (seconds) | Integer | `3600` | No |
+
+**Example:**
+```bash
+DATABASE_STRING=postgresql://user:password@localhost:5432/skyvern
+DATABASE_POOL_SIZE=20
+DATABASE_MAX_OVERFLOW=40
+```
+
+### Redis
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `REDIS_URL` | Redis connection string | String | - | No |
+| `REDIS_PASSWORD` | Redis password | String | - | No |
+| `REDIS_DB` | Redis database number | Integer | `0` | No |
+
+**Example:**
+```bash
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=your-redis-password
+REDIS_DB=0
+```
+
+## Storage Configuration
+
+### S3-Compatible Storage
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `ARTIFACT_STORAGE_PATH` | Local storage path (if not using S3) | String | `./artifacts` | No |
+| `AWS_S3_BUCKET_ARTIFACTS` | S3 bucket for artifacts | String | - | No |
+| `AWS_S3_BUCKET_DOWNLOADS` | S3 bucket for downloads | String | - | No |
+| `AWS_S3_REGION` | S3 region | String | `us-east-1` | No |
+| `AWS_ACCESS_KEY_ID` | AWS access key | String | - | No* |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | String | - | No* |
+| `S3_ENDPOINT_URL` | Custom S3 endpoint (e.g., MinIO) | String | - | No |
+
+*Uses AWS credential chain if not provided
+
+**Example (AWS S3):**
+```bash
+AWS_S3_BUCKET_ARTIFACTS=skyvern-artifacts
+AWS_S3_BUCKET_DOWNLOADS=skyvern-downloads
+AWS_S3_REGION=us-west-2
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+**Example (MinIO):**
+```bash
+AWS_S3_BUCKET_ARTIFACTS=skyvern-artifacts
+S3_ENDPOINT_URL=http://minio:9000
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin
+```
+
+### Azure Blob Storage
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `AZURE_STORAGE_CONNECTION_STRING` | Azure connection string | String | No |
+| `AZURE_STORAGE_CONTAINER_NAME` | Container name | String | No |
+
+**Example:**
+```bash
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
+AZURE_STORAGE_CONTAINER_NAME=skyvern-artifacts
+```
+
+## Browser Configuration
+
+### Browser Settings
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `BROWSER_TYPE` | Browser type | String | `chromium-headless` | No |
+| `BROWSER_TIMEOUT` | Browser timeout (ms) | Integer | `30000` | No |
+| `MAX_SCRAPING_RETRIES` | Max retry attempts | Integer | `3` | No |
+| `VIDEO_PATH` | Path for browser recordings | String | - | No |
+| `BROWSER_ACTION_TIMEOUT_MS` | Action timeout (ms) | Integer | `5000` | No |
+
+**Browser Types:**
+- `chromium-headless` - Headless Chrome (default)
+- `chromium` - Chrome with UI
+- `firefox-headless` - Headless Firefox
+- `firefox` - Firefox with UI
+- `webkit-headless` - Headless WebKit
+- `webkit` - WebKit with UI
+- `cdp-connect` - Connect to existing Chrome via CDP
+
+**Example:**
+```bash
+BROWSER_TYPE=chromium-headless
+BROWSER_TIMEOUT=60000  # 60 seconds
+MAX_SCRAPING_RETRIES=5
+```
+
+### CDP Connect Mode
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `CHROME_EXECUTABLE_PATH` | Path to Chrome executable | String | No |
+| `CDP_URL` | Chrome DevTools Protocol URL | String | No |
+
+**Example (Local Chrome):**
+```bash
+BROWSER_TYPE=cdp-connect
+CHROME_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
+
+**Example (Remote Chrome):**
+```bash
+BROWSER_TYPE=cdp-connect
+CDP_URL=ws://chrome:9222/devtools/browser/xxx
+```
+
+## Task Execution Configuration
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `MAX_STEPS_PER_RUN` | Maximum steps per task | Integer | `50` | No |
+| `MAX_STEPS_PER_ACTION` | Maximum steps per action | Integer | `10` | No |
+| `TASK_TIMEOUT_SECONDS` | Task timeout | Integer | `600` | No |
+| `SCREENSHOT_QUALITY` | Screenshot JPEG quality (0-100) | Integer | `80` | No |
+| `FULL_PAGE_SCREENSHOT` | Capture full page screenshots | Boolean | `false` | No |
+
+**Example:**
+```bash
+MAX_STEPS_PER_RUN=100
+MAX_STEPS_PER_ACTION=15
+TASK_TIMEOUT_SECONDS=1200  # 20 minutes
+SCREENSHOT_QUALITY=90
+FULL_PAGE_SCREENSHOT=true
+```
+
+## Workflow Configuration
+
+| Variable | Description | Type | Default | Required |
+|----------|-------------|------|---------|----------|
+| `WORKFLOW_DOWNLOAD_DIRECTORY` | Workflow downloads path | String | `./downloads` | No |
+| `MAX_WORKFLOW_RETRIES` | Max workflow retry attempts | Integer | `3` | No |
+| `WORKFLOW_TIMEOUT_SECONDS` | Workflow timeout | Integer | `3600` | No |
+
+**Example:**
+```bash
+WORKFLOW_DOWNLOAD_DIRECTORY=/data/workflow-downloads
+MAX_WORKFLOW_RETRIES=5
+WORKFLOW_TIMEOUT_SECONDS=7200  # 2 hours
+```
+
+## Credential Management
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_BITWARDEN` | Enable Bitwarden integration | Boolean | No |
+| `BITWARDEN_SERVER_URL` | Bitwarden server URL | String | No |
+| `BITWARDEN_CLIENT_ID` | Bitwarden client ID | String | No |
+| `BITWARDEN_CLIENT_SECRET` | Bitwarden client secret | String | No |
+| `BITWARDEN_MASTER_PASSWORD` | Bitwarden master password | String | No |
+
+**Example:**
+```bash
+ENABLE_BITWARDEN=true
+BITWARDEN_SERVER_URL=https://vault.bitwarden.com
+BITWARDEN_CLIENT_ID=your-client-id
+BITWARDEN_CLIENT_SECRET=your-client-secret
+BITWARDEN_MASTER_PASSWORD=your-master-password
+```
+
+## Email Configuration
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `EMAIL_SMTP_HOST` | SMTP server host | String | No |
+| `EMAIL_SMTP_PORT` | SMTP server port | Integer | No |
+| `EMAIL_SMTP_USERNAME` | SMTP username | String | No |
+| `EMAIL_SMTP_PASSWORD` | SMTP password | String | No |
+| `EMAIL_USE_TLS` | Use TLS | Boolean | No |
+| `EMAIL_FROM_ADDRESS` | Default from address | String | No |
+
+**Example:**
+```bash
+EMAIL_SMTP_HOST=smtp.gmail.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USERNAME=your-email@gmail.com
+EMAIL_SMTP_PASSWORD=your-app-password
+EMAIL_USE_TLS=true
+EMAIL_FROM_ADDRESS=noreply@skyvern.com
+```
+
+## Webhook Configuration
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `WEBHOOK_CALLBACK_URL` | Default webhook URL | String | No |
+| `WEBHOOK_RETRY_COUNT` | Max retry attempts | Integer | `3` |
+| `WEBHOOK_TIMEOUT` | Webhook timeout (seconds) | Integer | `30` |
+
+**Example:**
+```bash
+WEBHOOK_CALLBACK_URL=https://your-app.com/webhooks/skyvern
+WEBHOOK_RETRY_COUNT=5
+WEBHOOK_TIMEOUT=60
+```
+
+## Observability Configuration
+
+### Logging
+
+| Variable | Description | Type | Default |
+|----------|-------------|------|---------|
+| `LOG_LEVEL` | Log level | String | `INFO` |
+| `LOG_FORMAT` | Log format (json/text) | String | `json` |
+| `ENABLE_REQUEST_LOGGING` | Log HTTP requests | Boolean | `true` |
+| `ENABLE_LLM_LOGGING` | Log LLM requests | Boolean | `true` |
+
+**Example:**
+```bash
+LOG_LEVEL=DEBUG
+LOG_FORMAT=json
+ENABLE_REQUEST_LOGGING=true
+ENABLE_LLM_LOGGING=true
+```
+
+### Monitoring
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ENABLE_PROMETHEUS` | Enable Prometheus metrics | Boolean | No |
+| `PROMETHEUS_PORT` | Prometheus metrics port | Integer | `9090` |
+| `ENABLE_SENTRY` | Enable Sentry error tracking | Boolean | No |
+| `SENTRY_DSN` | Sentry DSN | String | No |
+
+**Example:**
+```bash
+ENABLE_PROMETHEUS=true
+PROMETHEUS_PORT=9090
+ENABLE_SENTRY=true
+SENTRY_DSN=https://xxx@sentry.io/xxx
+```
+
+## Advanced Configuration
+
+### Proxy Configuration
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `PROXY_SERVER` | Proxy server URL | String | No |
+| `PROXY_USERNAME` | Proxy username | String | No |
+| `PROXY_PASSWORD` | Proxy password | String | No |
+| `NO_PROXY` | Bypass proxy for hosts | String | No |
+
+**Example:**
+```bash
+PROXY_SERVER=http://proxy.example.com:8080
+PROXY_USERNAME=proxyuser
+PROXY_PASSWORD=proxypass
+NO_PROXY=localhost,127.0.0.1,.local
+```
+
+### Rate Limiting
+
+| Variable | Description | Type | Default |
+|----------|-------------|------|---------|
+| `ENABLE_RATE_LIMITING` | Enable rate limiting | Boolean | `false` |
+| `RATE_LIMIT_PER_MINUTE` | Requests per minute | Integer | `60` |
+| `RATE_LIMIT_PER_HOUR` | Requests per hour | Integer | `1000` |
+
+**Example:**
+```bash
+ENABLE_RATE_LIMITING=true
+RATE_LIMIT_PER_MINUTE=100
+RATE_LIMIT_PER_HOUR=5000
+```
+
+### Additional Modules
+
+| Variable | Description | Type | Required |
+|----------|-------------|------|----------|
+| `ADDITIONAL_MODULES` | Python modules to load | String | No |
+
+**Example:**
+```bash
+ADDITIONAL_MODULES=custom.module1,custom.module2
+```
+
+## Environment-Specific Configurations
+
+### Development
+
+```bash
+ENV=development
+LOG_LEVEL=DEBUG
+SKYVERN_DEBUG=true
+BROWSER_TYPE=chromium  # With UI for debugging
+DATABASE_STRING=postgresql://localhost:5432/skyvern_dev
+ARTIFACT_STORAGE_PATH=./artifacts
+```
+
+### Staging
+
+```bash
+ENV=staging
+LOG_LEVEL=INFO
+BROWSER_TYPE=chromium-headless
+DATABASE_STRING=postgresql://staging-db:5432/skyvern
+AWS_S3_BUCKET_ARTIFACTS=skyvern-staging-artifacts
+ENABLE_API_KEY_AUTH=true
+```
+
+### Production
+
+```bash
+ENV=production
+LOG_LEVEL=WARNING
+BROWSER_TYPE=chromium-headless
+DATABASE_STRING=postgresql://prod-db:5432/skyvern
+AWS_S3_BUCKET_ARTIFACTS=skyvern-prod-artifacts
+ENABLE_API_KEY_AUTH=true
+ENABLE_RATE_LIMITING=true
+ENABLE_SENTRY=true
+SENTRY_DSN=https://xxx@sentry.io/xxx
+```
+
+## Security Best Practices
+
+1. **Never commit `.env` files** to version control
+2. **Use secret managers** in production (AWS Secrets Manager, Azure Key Vault, etc.)
+3. **Rotate credentials regularly**
+4. **Use minimal permissions** for database and cloud access
+5. **Enable TLS/SSL** for all network connections
+6. **Set strong API keys** (minimum 32 characters)
+7. **Restrict CORS origins** in production
+
+## Configuration Validation
+
+Validate your configuration:
+
+```bash
+skyvern validate-config
+```
+
+This checks:
+- Required variables are set
+- Database connectivity
+- LLM provider configuration
+- Storage accessibility
+- Redis connectivity (if configured)
+
+## Getting Help
+
+If you need assistance with configuration:
+
+- Check the [Deployment Guide](/deployment/overview)
+- Visit [Discord Community](https://discord.gg/fG2XXEuQX3)
+- Review [Example Configurations](https://github.com/Skyvern-AI/skyvern/tree/main/examples/configs)

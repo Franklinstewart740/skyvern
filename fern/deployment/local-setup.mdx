@@ -1,0 +1,616 @@
+---
+title: Local Development Setup
+subtitle: Set up Skyvern for local development and testing
+slug: deployment/local-setup
+---
+
+# Local Development Setup
+
+This guide walks you through setting up Skyvern on your local machine for development, testing, or small-scale usage.
+
+## Prerequisites
+
+### Required Software
+
+- **Python 3.11 or 3.12** (3.13 not yet fully supported)
+  - Download: [python.org](https://www.python.org/downloads/)
+  - Verify: `python --version`
+
+- **Node.js 18+ and npm** (for UI development)
+  - Download: [nodejs.org](https://nodejs.org/)
+  - Verify: `node --version && npm --version`
+
+- **Git**
+  - Download: [git-scm.com](https://git-scm.com/)
+  - Verify: `git --version`
+
+### Platform-Specific Requirements
+
+#### Windows
+- **Rust** (required for some dependencies)
+  - Download: [rustup.rs](https://rustup.rs/)
+- **Visual Studio C++ Build Tools**
+  - Download: [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+  - Select "Desktop development with C++"
+- **Windows SDK**
+  - Included with Visual Studio installer
+
+#### macOS
+- **Xcode Command Line Tools**
+  ```bash
+  xcode-select --install
+  ```
+
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install -y python3-pip python3-dev build-essential libpq-dev
+```
+
+### LLM Provider Account
+
+You'll need an API key from at least one LLM provider:
+- [OpenAI](https://platform.openai.com/) - Recommended for getting started
+- [Anthropic](https://console.anthropic.com/) - Best performance
+- [Azure OpenAI](https://azure.microsoft.com/products/ai-services/openai-service)
+- [Google AI Studio](https://ai.google.dev/) - For Gemini
+- [AWS Bedrock](https://aws.amazon.com/bedrock/)
+
+## Quick Start (5 minutes)
+
+### 1. Install Skyvern
+
+```bash
+pip install skyvern
+```
+
+### 2. Run Quickstart
+
+```bash
+skyvern quickstart
+```
+
+This will:
+- Set up a PostgreSQL database (in Docker)
+- Run database migrations
+- Configure LLM provider (interactive wizard)
+- Start Skyvern backend and UI
+
+### 3. Access Skyvern
+
+Open your browser to `http://localhost:8080`
+
+That's it! You're ready to run tasks.
+
+## Detailed Setup (For Contributors)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Skyvern-AI/skyvern.git
+cd skyvern
+```
+
+### 2. Set Up Python Environment
+
+#### Using uv (Recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package installer and resolver.
+
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install dependencies
+uv sync --group dev
+```
+
+#### Using pip + venv
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+source .venv/bin/activate
+
+# Install dependencies
+pip install -e ".[dev]"
+```
+
+### 3. Set Up Database
+
+#### Option A: Docker PostgreSQL (Recommended)
+
+The `skyvern quickstart` command automatically sets up PostgreSQL in Docker.
+
+To manually manage:
+
+```bash
+# Start PostgreSQL
+docker run -d \
+  --name postgresql-container \
+  -e POSTGRES_USER=skyvern \
+  -e POSTGRES_PASSWORD=skyvern \
+  -e POSTGRES_DB=skyvern \
+  -p 5432:5432 \
+  postgres:14-alpine
+
+# Verify it's running
+docker ps | grep postgresql-container
+```
+
+#### Option B: Local PostgreSQL
+
+If you have PostgreSQL installed locally:
+
+```bash
+# Create database
+createdb skyvern
+
+# Update connection string in .env
+DATABASE_STRING=postgresql+psycopg://your_user:your_password@localhost:5432/skyvern
+```
+
+### 4. Configure LLM Provider
+
+Run the interactive configuration wizard:
+
+```bash
+skyvern init llm
+```
+
+Or manually create `.env`:
+
+```bash
+# OpenAI Example
+ENABLE_OPENAI=true
+OPENAI_API_KEY=sk-proj-xxxxx
+LLM_KEY=OPENAI_GPT4O
+SECONDARY_LLM_KEY=OPENAI_GPT4O_MINI
+
+# Anthropic Example
+ENABLE_ANTHROPIC=true
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+LLM_KEY=ANTHROPIC_CLAUDE4_SONNET
+SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+```
+
+See [Environment Variables Guide](/deployment/environment-variables) for all options.
+
+### 5. Run Database Migrations
+
+```bash
+alembic upgrade head
+```
+
+### 6. Start Services
+
+#### Option A: All-in-One
+
+```bash
+skyvern run all
+```
+
+This starts both backend API and frontend UI.
+
+#### Option B: Separate Services
+
+Terminal 1 - Backend:
+```bash
+skyvern run server
+```
+
+Terminal 2 - Frontend:
+```bash
+skyvern run ui
+```
+
+### 7. Verify Installation
+
+Check service status:
+
+```bash
+skyvern status
+```
+
+Test API:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Access UI:
+
+```
+http://localhost:8080
+```
+
+## Configuration
+
+### Environment Variables
+
+Key environment variables for local development:
+
+```bash
+# Database
+DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@localhost:5432/skyvern
+
+# LLM Provider (choose one)
+ENABLE_OPENAI=true
+OPENAI_API_KEY=your-key
+LLM_KEY=OPENAI_GPT4O
+
+# Logging
+LOG_LEVEL=DEBUG  # Use DEBUG for development
+LOG_FORMAT=text  # More readable than JSON for dev
+
+# Browser
+BROWSER_TYPE=chromium  # Show browser UI for debugging
+# BROWSER_TYPE=chromium-headless  # Headless for CI/testing
+
+# Storage (local for development)
+ARTIFACT_STORAGE_PATH=./artifacts
+VIDEO_PATH=./videos
+HAR_PATH=./har
+
+# Development Settings
+DEBUG_MODE=true
+MAX_STEPS_PER_RUN=50
+```
+
+### Browser Configuration
+
+#### Show Browser During Execution
+
+```bash
+BROWSER_TYPE=chromium  # or firefox, webkit
+```
+
+#### Use Your Local Chrome
+
+```bash
+# Start Chrome with debugging
+# macOS:
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir="/tmp/chrome-profile"
+
+# Windows:
+"C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+  --remote-debugging-port=9222 ^
+  --user-data-dir="C:\chrome-profile"
+
+# In .env:
+BROWSER_TYPE=cdp-connect
+BROWSER_REMOTE_DEBUGGING_URL=http://localhost:9222/
+```
+
+## Development Workflow
+
+### Running Tests
+
+```bash
+# All tests
+pytest tests/
+
+# Specific test file
+pytest tests/unit_tests/test_scraper.py
+
+# With coverage
+pytest --cov=skyvern tests/
+
+# Async tests
+pytest -v tests/ -k "async"
+```
+
+### Code Quality
+
+```bash
+# Format code
+ruff format
+
+# Lint code
+ruff check
+
+# Fix auto-fixable issues
+ruff check --fix
+
+# Type checking
+mypy skyvern
+
+# All checks (pre-commit)
+pre-commit run --all-files
+```
+
+### Database Operations
+
+```bash
+# Create new migration
+alembic revision --autogenerate -m "Add new column"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback one migration
+alembic downgrade -1
+
+# View migration history
+alembic history
+
+# Reset database (development only!)
+alembic downgrade base
+alembic upgrade head
+```
+
+### Frontend Development
+
+```bash
+cd skyvern-frontend
+
+# Install dependencies
+npm install
+
+# Run dev server (with hot reload)
+npm run dev
+
+# Build for production
+npm run build
+
+# Lint
+npm run lint
+
+# Format
+npm run format
+```
+
+### Debugging
+
+#### Enable Verbose Logging
+
+```bash
+# In .env
+LOG_LEVEL=DEBUG
+ENABLE_REQUEST_LOGGING=true
+ENABLE_LLM_LOGGING=true
+```
+
+#### View Logs
+
+```bash
+# Real-time logs
+tail -f log/skyvern.log
+
+# Filter errors
+grep ERROR log/skyvern.log
+
+# Watch specific service
+skyvern run server --verbose
+```
+
+#### Python Debugger
+
+```python
+# Add breakpoint in code
+import pdb; pdb.set_trace()
+
+# Or use ipdb for better experience
+import ipdb; ipdb.set_trace()
+```
+
+#### Browser DevTools
+
+Access Chrome DevTools when using `chromium` browser type:
+- Right-click in browser → Inspect
+- Or press F12
+
+## Common Issues and Solutions
+
+### Issue: PostgreSQL Connection Failed
+
+**Error**: `could not connect to server: Connection refused`
+
+**Solutions**:
+
+1. Check PostgreSQL is running:
+```bash
+docker ps | grep postgresql
+# or
+pg_isready -h localhost -p 5432
+```
+
+2. Verify connection string in `.env`:
+```bash
+DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@localhost:5432/skyvern
+```
+
+3. Check PostgreSQL logs:
+```bash
+docker logs postgresql-container
+```
+
+### Issue: Port Already in Use
+
+**Error**: `Address already in use: 8000` or `8080`
+
+**Solutions**:
+
+1. Find process using port:
+```bash
+# macOS/Linux
+lsof -i :8000
+# Windows
+netstat -ano | findstr :8000
+```
+
+2. Kill the process or use different port:
+```bash
+# In .env
+PORT=9000
+```
+
+### Issue: Browser Installation Failed
+
+**Error**: `Executable doesn't exist at /path/to/chrome`
+
+**Solution**:
+
+```bash
+# Install Playwright browsers
+playwright install chromium
+
+# Or specific browser
+playwright install firefox
+```
+
+### Issue: LLM API Errors
+
+**Error**: `AuthenticationError: Invalid API key`
+
+**Solutions**:
+
+1. Verify API key is correct in `.env`
+2. Check API key has proper permissions
+3. Test API key directly:
+```bash
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Issue: Import Errors
+
+**Error**: `ModuleNotFoundError: No module named 'skyvern'`
+
+**Solutions**:
+
+1. Activate virtual environment:
+```bash
+source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate     # Windows
+```
+
+2. Install in development mode:
+```bash
+pip install -e .
+```
+
+### Issue: Database Migration Errors
+
+**Error**: `Target database is not up to date`
+
+**Solution**:
+
+```bash
+# Check current version
+alembic current
+
+# View pending migrations
+alembic heads
+
+# Apply all migrations
+alembic upgrade head
+```
+
+### Issue: Frontend Build Errors
+
+**Error**: `Cannot find module` or `npm ERR!`
+
+**Solutions**:
+
+1. Clear node modules and reinstall:
+```bash
+cd skyvern-frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+2. Update npm:
+```bash
+npm install -g npm@latest
+```
+
+## Performance Tips
+
+### Speed Up Development
+
+1. **Use Secondary LLM**: Set faster model for development:
+```bash
+SECONDARY_LLM_KEY=OPENAI_GPT4O_MINI
+```
+
+2. **Reduce Max Steps**: Lower for faster testing:
+```bash
+MAX_STEPS_PER_RUN=10
+```
+
+3. **Enable Caching**: Cache LLM responses:
+```bash
+PROMPT_CACHE_WINDOW_HOURS=24
+```
+
+4. **Use Headless Browser**: Faster execution:
+```bash
+BROWSER_TYPE=chromium-headless
+```
+
+### Optimize Resource Usage
+
+1. **Limit Browser Instances**: Reduce parallel executions
+2. **Clean Up Artifacts**: Regularly delete old screenshots/videos
+3. **Use PostgreSQL Connection Pooling**:
+```bash
+DATABASE_POOL_SIZE=5
+DATABASE_MAX_OVERFLOW=10
+```
+
+## IDE Setup
+
+### VS Code
+
+Recommended extensions:
+- Python (Microsoft)
+- Pylance
+- Ruff
+- GitLens
+- Docker
+
+`.vscode/settings.json`:
+```json
+{
+  "python.defaultInterpreterPath": ".venv/bin/python",
+  "python.linting.enabled": true,
+  "python.linting.ruffEnabled": true,
+  "python.formatting.provider": "ruff",
+  "editor.formatOnSave": true,
+  "editor.rulers": [120],
+  "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
+  }
+}
+```
+
+### PyCharm
+
+1. Set Project Interpreter: Settings → Project → Python Interpreter → .venv
+2. Enable Ruff: Settings → Tools → External Tools → Add Ruff
+3. Set Line Length: Settings → Editor → Code Style → Python → 120
+
+## Next Steps
+
+- [Architecture Guide](/getting-started/architecture-guide) - Understand the codebase
+- [Visual Reasoning Tutorial](/getting-started/visual-reasoning-tutorial) - Build workflows
+- [Contributing Guide](https://github.com/Skyvern-AI/skyvern/blob/main/CONTRIBUTING.md) - Contribution guidelines
+- [Docker Compose Setup](/deployment/docker-compose) - Container-based deployment
+- [Environment Variables](/deployment/environment-variables) - Full configuration reference
+
+## Getting Help
+
+- [Discord Community](https://discord.gg/fG2XXEuQX3) - Ask questions
+- [GitHub Issues](https://github.com/Skyvern-AI/skyvern/issues) - Report bugs
+- [Documentation](https://www.skyvern.com/docs) - Browse docs
+- [AGENTS.md](/AGENTS.md) - Developer guide

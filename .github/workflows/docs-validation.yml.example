@@ -1,0 +1,102 @@
+# Documentation Validation Workflow
+# This file demonstrates how to validate code examples in documentation
+# Rename to docs-validation.yml to enable
+name: Documentation Validation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'fern/**'
+      - 'README.md'
+      - 'AGENTS.md'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'fern/**'
+      - 'README.md'
+      - 'AGENTS.md'
+
+jobs:
+  validate-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install skyvern pytest markdown-code-runner
+
+      - name: Extract and validate Python examples
+        run: |
+          # Extract Python code blocks from MDX files
+          find fern -name "*.mdx" -type f | while read file; do
+            echo "Checking $file"
+            # Extract code blocks and validate syntax
+            sed -n '/```python/,/```/p' "$file" | grep -v '```' > temp_code.py || true
+            if [ -s temp_code.py ]; then
+              echo "Validating syntax in $file"
+              python -m py_compile temp_code.py || echo "Warning: Syntax errors in $file"
+            fi
+            rm -f temp_code.py
+          done
+
+      - name: Validate README examples
+        run: |
+          # Check README code examples compile
+          sed -n '/```python/,/```/p' README.md | grep -v '```' > readme_examples.py || true
+          if [ -s readme_examples.py ]; then
+            python -m py_compile readme_examples.py
+          fi
+          rm -f readme_examples.py
+
+  validate-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for broken links
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: '--verbose --no-progress fern/**/*.mdx README.md --exclude "localhost|127.0.0.1|example.com"'
+          fail: true
+
+  validate-api-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Skyvern
+        run: |
+          pip install -e .
+
+      - name: Verify OpenAPI spec
+        run: |
+          # Start services briefly to generate OpenAPI
+          pip install uvicorn
+          # Check that OpenAPI spec is valid
+          python -c "import json; json.load(open('fern/openapi/skyvern_openapi.json'))"
+
+  fern-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Fern
+        run: npm install -g fern-api
+
+      - name: Check Fern configuration
+        run: |
+          cd fern
+          fern check

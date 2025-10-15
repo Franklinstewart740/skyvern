@@ -69,6 +69,12 @@ navigation:
             path: introduction.mdx
           - page: Quickstart
             path: getting-started/quickstart.mdx
+          - page: Architecture Guide
+            path: getting-started/architecture-guide.mdx
+          - page: Visual Reasoning Tutorial
+            path: getting-started/visual-reasoning-tutorial.mdx
+          - page: Benchmarking and Evaluation
+            path: getting-started/benchmarking-guide.mdx
           - page: Skyvern In Action
             path: getting-started/skyvern-in-action.mdx
           - page: Prompting and Troubleshooting Guide
@@ -151,6 +157,16 @@ navigation:
             path: integrations/n8n.mdx
           - page: Workato
             path: integrations/workato.mdx
+      - section: Deployment
+        contents:
+          - page: Overview
+            path: deployment/overview.mdx
+          - page: Local Development Setup
+            path: deployment/local-setup.mdx
+          - page: Docker Compose
+            path: deployment/docker-compose.mdx
+          - page: Environment Variables
+            path: deployment/environment-variables.mdx
   - tab: api
     layout:
       - api: API Reference
