@@ -41,6 +41,7 @@ from skyvern.forge.sdk.db.id import (
     generate_organization_bitwarden_collection_id,
     generate_output_parameter_id,
     generate_persistent_browser_session_id,
+    generate_prompt_cache_id,
     generate_script_block_id,
     generate_script_file_id,
     generate_script_id,
@@ -1047,3 +1048,30 @@ class ObserverInteractionModel(Base):
     timestamp = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class PromptCacheModel(Base):
+    __tablename__ = "prompt_cache"
+    __table_args__ = (
+        Index("ix_prompt_cache_hash_llm_key", "prompt_hash", "llm_key"),
+        Index("ix_prompt_cache_org_created", "organization_id", "created_at"),
+        Index("ix_prompt_cache_expires_at", "ttl_expires_at"),
+    )
+
+    prompt_cache_id = Column(String, primary_key=True, default=generate_prompt_cache_id)
+    organization_id = Column(String, nullable=True, index=True)
+    prompt_hash = Column(String, nullable=False, index=True)
+    llm_key = Column(String, nullable=False)
+    model_config = Column(JSON, nullable=True)
+    prompt_text = Column(UnicodeText, nullable=True)
+    response_payload = Column(JSON, nullable=False)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    reasoning_tokens = Column(Integer, nullable=True)
+    cached_tokens = Column(Integer, nullable=True)
+    cache_cost = Column(Numeric, nullable=True)
+    hit_count = Column(Integer, default=0, nullable=False)
+    ttl_expires_at = Column(DateTime, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    accessed_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
