@@ -123,3 +123,20 @@ agent = ForgeAgent()
 if SettingsManager.get_settings().TRACE_ENABLED:
     if SettingsManager.get_settings().TRACE_PROVIDER == "lmnr":
         TraceManager.set_trace_provider(LaminarTrace(api_key=SettingsManager.get_settings().TRACE_PROVIDER_API_KEY))
+
+# Initialize plugin framework
+if SettingsManager.get_settings().PLUGIN_AUTO_LOAD:
+    from skyvern.services.plugins.loader import auto_load_plugins
+
+    try:
+        plugin_count = auto_load_plugins()
+        if plugin_count:
+            import structlog
+
+            LOG = structlog.get_logger()
+            LOG.info("Plugin framework initialized", plugin_count=plugin_count)
+    except Exception:
+        import structlog
+
+        LOG = structlog.get_logger()
+        LOG.exception("Failed to auto-load plugins during app initialization")
