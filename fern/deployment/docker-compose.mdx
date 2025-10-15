@@ -1,0 +1,666 @@
+---
+title: Docker Compose Deployment
+subtitle: Deploy Skyvern using Docker Compose
+slug: deployment/docker-compose
+---
+
+# Docker Compose Deployment
+
+Docker Compose provides an easy way to deploy Skyvern with all its dependencies in isolated containers. This guide covers setup, configuration, and management of a Docker Compose-based Skyvern deployment.
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine 20.10+
+- Docker Compose V2
+- At least 8GB RAM and 50GB free disk space
+- LLM provider API key (OpenAI, Anthropic, Azure, etc.)
+
+## Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Skyvern-AI/skyvern.git
+cd skyvern
+```
+
+### 2. Initialize LLM Configuration
+
+Use the Skyvern CLI to generate your `.env` file:
+
+```bash
+pip install skyvern
+skyvern init llm
+```
+
+This interactive wizard will:
+- Help you choose an LLM provider
+- Configure API keys
+- Set up recommended models
+- Generate a `.env` file
+
+### 3. Start Services
+
+```bash
+docker compose up -d
+```
+
+This starts:
+- **PostgreSQL**: Database for tasks, workflows, credentials
+- **Skyvern API**: Backend service
+- **Skyvern UI**: Frontend application
+
+### 4. Access Skyvern
+
+Navigate to `http://localhost:8080` in your browser to access the UI.
+
+## Configuration
+
+### Environment Variables
+
+The `docker-compose.yml` uses a `.env` file for configuration. Create or edit `.env`:
+
+```bash
+# Core Database (Auto-configured by docker-compose)
+DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@postgres:5432/skyvern
+
+# LLM Configuration (Required - configure via `skyvern init llm`)
+ENABLE_ANTHROPIC=true
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+LLM_KEY=ANTHROPIC_CLAUDE4_SONNET
+SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+
+# Browser Settings
+BROWSER_TYPE=chromium-headful
+ENABLE_CODE_BLOCK=true
+
+# Optional: Storage configuration
+# AWS_S3_BUCKET_ARTIFACTS=your-bucket
+# AWS_ACCESS_KEY_ID=your-access-key
+# AWS_SECRET_ACCESS_KEY=your-secret-key
+```
+
+### LLM Provider Examples
+
+#### OpenAI
+
+```bash
+ENABLE_OPENAI=true
+OPENAI_API_KEY=sk-proj-xxxxx
+LLM_KEY=OPENAI_GPT4O
+SECONDARY_LLM_KEY=OPENAI_GPT4O_MINI
+```
+
+#### Anthropic
+
+```bash
+ENABLE_ANTHROPIC=true
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+LLM_KEY=ANTHROPIC_CLAUDE4_SONNET
+SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+```
+
+#### Azure OpenAI
+
+```bash
+ENABLE_AZURE=true
+AZURE_DEPLOYMENT=your-deployment-name
+AZURE_API_KEY=your-azure-key
+AZURE_API_BASE=https://your-resource.openai.azure.com/
+AZURE_API_VERSION=2024-02-01
+LLM_KEY=AZURE_OPENAI
+```
+
+#### AWS Bedrock
+
+```bash
+ENABLE_BEDROCK=true
+AWS_REGION=us-west-2
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+LLM_KEY=BEDROCK_ANTHROPIC_CLAUDE4_SONNET_INFERENCE_PROFILE
+```
+
+#### Google Gemini
+
+```bash
+ENABLE_GEMINI=true
+GEMINI_API_KEY=your-gemini-api-key
+LLM_KEY=GEMINI_2.5_PRO_PREVIEW
+```
+
+#### Ollama (Local Models)
+
+```bash
+ENABLE_OLLAMA=true
+OLLAMA_SERVER_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=qwen2.5:7b-instruct
+LLM_KEY=OLLAMA
+```
+
+**Note:** Ollama must be running on your host machine. Start it with:
+
+```bash
+ollama serve
+ollama pull qwen2.5:7b-instruct
+```
+
+## Service Architecture
+
+The `docker-compose.yml` defines these services:
+
+### PostgreSQL Database
+
+```yaml
+postgres:
+  image: postgres:14-alpine
+  volumes:
+    - ./postgres-data:/var/lib/postgresql/data
+  environment:
+    - POSTGRES_USER=skyvern
+    - POSTGRES_PASSWORD=skyvern
+    - POSTGRES_DB=skyvern
+  ports:
+    - 5432:5432  # Uncomment to access externally
+```
+
+### Skyvern Service
+
+```yaml
+skyvern:
+  image: public.ecr.aws/skyvern/skyvern:latest
+  ports:
+    - 8000:8000  # API
+    - 9222:9222  # CDP for browser debugging
+  volumes:
+    - ./artifacts:/data/artifacts
+    - ./videos:/data/videos
+    - ./har:/data/har
+    - ./log:/data/log
+  env_file:
+    - .env
+```
+
+### Skyvern UI
+
+```yaml
+skyvern-ui:
+  image: public.ecr.aws/skyvern/skyvern-ui:latest
+  ports:
+    - 8080:8080
+  environment:
+    - VITE_SKYVERN_API_URL=http://skyvern:8000
+```
+
+## Advanced Configuration
+
+### Custom Ports
+
+Edit `docker-compose.yml` to change ports:
+
+```yaml
+skyvern:
+  ports:
+    - "9000:8000"  # API on port 9000
+    
+skyvern-ui:
+  ports:
+    - "3000:8080"  # UI on port 3000
+```
+
+Then access UI at `http://localhost:3000`
+
+### Persistent Volumes
+
+By default, Docker Compose creates local directories:
+
+```
+./postgres-data/  # Database data
+./artifacts/      # Screenshots, downloads
+./videos/         # Browser recordings
+./har/           # Network logs
+./log/           # Application logs
+```
+
+To use different paths:
+
+```yaml
+volumes:
+  - /opt/skyvern/data:/var/lib/postgresql/data
+  - /mnt/storage/artifacts:/data/artifacts
+```
+
+### External Database
+
+To use an external PostgreSQL instance:
+
+1. Comment out the `postgres` service in `docker-compose.yml`
+2. Update `.env`:
+
+```bash
+DATABASE_STRING=postgresql+psycopg://user:password@external-host:5432/skyvern
+```
+
+### S3 Storage
+
+For production, use S3 for artifacts:
+
+```bash
+# In .env
+SKYVERN_STORAGE_TYPE=s3
+AWS_S3_BUCKET_ARTIFACTS=skyvern-artifacts
+AWS_S3_BUCKET_SCREENSHOTS=skyvern-screenshots
+AWS_S3_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+GENERATE_PRESIGNED_URLS=true
+```
+
+### Browser Configuration
+
+#### Headless vs Headful
+
+```bash
+# Headless (no UI, better performance)
+BROWSER_TYPE=chromium-headless
+
+# Headful (shows browser UI, good for debugging)
+BROWSER_TYPE=chromium-headful
+```
+
+#### CDP Connect Mode
+
+Connect to your local Chrome for debugging:
+
+1. Start Chrome with remote debugging:
+
+**macOS:**
+```bash
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir="/tmp/chrome-cdp-profile" \
+  --no-first-run --no-default-browser-check
+```
+
+**Windows:**
+```cmd
+"C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+  --remote-debugging-port=9222 ^
+  --user-data-dir="C:\chrome-cdp-profile" ^
+  --no-first-run --no-default-browser-check
+```
+
+**Linux:**
+```bash
+google-chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir="/tmp/chrome-cdp-profile" \
+  --no-first-run --no-default-browser-check
+```
+
+2. Update `.env`:
+
+```bash
+BROWSER_TYPE=cdp-connect
+BROWSER_REMOTE_DEBUGGING_URL=http://host.docker.internal:9222/
+```
+
+3. Restart Skyvern:
+
+```bash
+docker compose restart skyvern
+```
+
+### Resource Limits
+
+Add resource constraints to prevent resource exhaustion:
+
+```yaml
+skyvern:
+  deploy:
+    resources:
+      limits:
+        cpus: '4'
+        memory: 8G
+      reservations:
+        cpus: '2'
+        memory: 4G
+```
+
+### Network Configuration
+
+Create a custom network:
+
+```yaml
+networks:
+  skyvern-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  postgres:
+    networks:
+      skyvern-network:
+        ipv4_address: 172.20.0.2
+  
+  skyvern:
+    networks:
+      skyvern-network:
+        ipv4_address: 172.20.0.3
+```
+
+## Management Commands
+
+### Start Services
+
+```bash
+# Start in background
+docker compose up -d
+
+# Start with logs
+docker compose up
+
+# Start specific service
+docker compose up -d skyvern
+```
+
+### Stop Services
+
+```bash
+# Stop all services
+docker compose stop
+
+# Stop specific service
+docker compose stop skyvern
+
+# Stop and remove containers
+docker compose down
+
+# Stop and remove containers + volumes
+docker compose down -v
+```
+
+### View Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f skyvern
+
+# Last 100 lines
+docker compose logs --tail=100 skyvern
+```
+
+### Restart Services
+
+```bash
+# Restart all
+docker compose restart
+
+# Restart specific service
+docker compose restart skyvern
+```
+
+### Update Skyvern
+
+```bash
+# Pull latest images
+docker compose pull
+
+# Restart with new images
+docker compose up -d
+```
+
+### Execute Commands
+
+```bash
+# Open bash in skyvern container
+docker compose exec skyvern bash
+
+# Run Alembic migrations
+docker compose exec skyvern alembic upgrade head
+
+# Check Python version
+docker compose exec skyvern python --version
+```
+
+## Database Management
+
+### Run Migrations
+
+```bash
+docker compose exec skyvern alembic upgrade head
+```
+
+### Create Backup
+
+```bash
+# Backup database
+docker compose exec postgres pg_dump -U skyvern skyvern > backup_$(date +%Y%m%d).sql
+
+# Restore database
+docker compose exec -T postgres psql -U skyvern skyvern < backup_20240115.sql
+```
+
+### Access PostgreSQL
+
+```bash
+# Connect to PostgreSQL
+docker compose exec postgres psql -U skyvern -d skyvern
+
+# Run SQL query
+docker compose exec postgres psql -U skyvern -d skyvern -c "SELECT COUNT(*) FROM tasks;"
+```
+
+## Troubleshooting
+
+### Container Won't Start
+
+**Check logs:**
+```bash
+docker compose logs skyvern
+```
+
+**Common issues:**
+- Missing `.env` file → Run `skyvern init llm`
+- Database not ready → Wait for PostgreSQL health check
+- Port conflicts → Change ports in `docker-compose.yml`
+
+### Database Connection Errors
+
+**Check PostgreSQL is running:**
+```bash
+docker compose ps postgres
+```
+
+**Test connection:**
+```bash
+docker compose exec postgres pg_isready -U skyvern
+```
+
+**Reset database:**
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+### Out of Memory
+
+**Increase Docker memory:**
+- Docker Desktop → Settings → Resources → Memory → 8GB+
+
+**Add resource limits:**
+```yaml
+services:
+  skyvern:
+    mem_limit: 8g
+```
+
+### Browser Issues
+
+**Check browser type:**
+```bash
+# In .env
+BROWSER_TYPE=chromium-headless  # or chromium-headful
+```
+
+**Increase timeouts:**
+```bash
+BROWSER_TIMEOUT=60000
+BROWSER_ACTION_TIMEOUT_MS=10000
+```
+
+### Permission Issues
+
+**Fix volume permissions:**
+```bash
+sudo chown -R 1000:1000 ./artifacts ./videos ./har ./log
+```
+
+### Port Already in Use
+
+**Find process using port:**
+```bash
+# On Linux/Mac
+lsof -i :8000
+
+# On Windows
+netstat -ano | findstr :8000
+```
+
+**Change port in docker-compose.yml:**
+```yaml
+ports:
+  - "8001:8000"  # Use 8001 instead
+```
+
+## Production Considerations
+
+### Use Docker Secrets
+
+Instead of `.env` file:
+
+```yaml
+secrets:
+  anthropic_key:
+    file: ./secrets/anthropic_key.txt
+
+services:
+  skyvern:
+    secrets:
+      - anthropic_key
+    environment:
+      - ANTHROPIC_API_KEY=/run/secrets/anthropic_key
+```
+
+### Enable HTTPS
+
+Use a reverse proxy (Nginx/Traefik):
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+```
+
+### Monitoring
+
+Add Prometheus and Grafana:
+
+```yaml
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+  
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+```
+
+### Automated Backups
+
+Add backup service:
+
+```yaml
+services:
+  backup:
+    image: postgres:14-alpine
+    depends_on:
+      - postgres
+    volumes:
+      - ./backups:/backups
+    entrypoint: |
+      bash -c '
+        while true; do
+          pg_dump -h postgres -U skyvern skyvern > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+          sleep 86400  # Daily
+        done
+      '
+```
+
+### Health Checks
+
+Add health checks to services:
+
+```yaml
+services:
+  skyvern:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+## Migration from CLI to Docker
+
+If you're moving from CLI installation:
+
+1. **Export existing data:**
+```bash
+pg_dump skyvern > skyvern_export.sql
+```
+
+2. **Start Docker Compose:**
+```bash
+docker compose up -d postgres
+```
+
+3. **Import data:**
+```bash
+docker compose exec -T postgres psql -U skyvern skyvern < skyvern_export.sql
+```
+
+4. **Start Skyvern:**
+```bash
+docker compose up -d
+```
+
+## Next Steps
+
+- [Environment Variables Reference](/deployment/environment-variables) - Full configuration guide
+- [Kubernetes Deployment](/deployment/kubernetes) - Scale to production
+- [Cloud Deployment](/deployment/cloud) - Deploy on AWS, GCP, or Azure
+- [Monitoring and Observability](/observability/overview) - Set up monitoring
+
+## Support
+
+Need help?
+- [Discord Community](https://discord.gg/fG2XXEuQX3)
+- [GitHub Issues](https://github.com/Skyvern-AI/skyvern/issues)
+- [Documentation](https://www.skyvern.com/docs)

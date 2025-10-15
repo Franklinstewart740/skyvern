@@ -1,0 +1,596 @@
+---
+title: Visual Reasoning Workflows Tutorial
+subtitle: Build powerful automation using Skyvern's vision-based LLM capabilities
+slug: getting-started/visual-reasoning-tutorial
+---
+
+# Visual Reasoning Workflows Tutorial
+
+This tutorial demonstrates how to leverage Skyvern's visual reasoning capabilities to build robust automation workflows that adapt to different websites without custom code.
+
+## What is Visual Reasoning?
+
+Visual reasoning in Skyvern means the system:
+1. **Captures screenshots** of web pages
+2. **Analyzes visual elements** using Vision LLMs (like GPT-4V, Claude 3.5 Sonnet)
+3. **Plans actions** based on visual understanding
+4. **Executes interactions** with identified elements
+5. **Validates results** visually
+
+Unlike traditional automation that relies on brittle CSS selectors or XPaths, Skyvern sees the page as a human would.
+
+## Tutorial 1: E-commerce Product Search
+
+Let's build a workflow that searches for products across different e-commerce sites and compares prices.
+
+### Step 1: Create the Workflow
+
+```python
+from skyvern import Skyvern
+
+skyvern = Skyvern()
+
+# Define the workflow
+workflow = {
+    "title": "E-commerce Price Comparison",
+    "description": "Search for products and extract pricing information",
+    "workflow_definition": {
+        "blocks": [
+            {
+                "block_type": "task",
+                "label": "search_product",
+                "url": "https://www.amazon.com",
+                "navigation_goal": "Search for {{ product_name }} and go to the first result",
+                "data_extraction_goal": "Extract the product title, price, and rating",
+                "output_parameter": {
+                    "parameter_type": "context",
+                    "key": "amazon_data"
+                }
+            },
+            {
+                "block_type": "task",
+                "label": "compare_ebay",
+                "url": "https://www.ebay.com",
+                "navigation_goal": "Search for {{ product_name }} and go to the first result",
+                "data_extraction_goal": "Extract the product title, price, and seller rating",
+                "output_parameter": {
+                    "parameter_type": "context",
+                    "key": "ebay_data"
+                }
+            },
+            {
+                "block_type": "text_prompt",
+                "label": "compare_prices",
+                "llm_key": "ANTHROPIC_CLAUDE3.5_SONNET",
+                "prompt": "Compare these products and recommend the best deal:\nAmazon: {{ CONTEXT.amazon_data }}\neBay: {{ CONTEXT.ebay_data }}",
+                "output_parameter": {
+                    "parameter_type": "context",
+                    "key": "recommendation"
+                }
+            }
+        ],
+        "parameters": [
+            {
+                "parameter_type": "workflow",
+                "key": "product_name",
+                "workflow_parameter_type": "string"
+            }
+        ]
+    }
+}
+
+# Create the workflow
+created_workflow = await skyvern.create_workflow(workflow)
+```
+
+### Step 2: Run the Workflow
+
+```python
+# Execute with specific product
+run = await skyvern.run_workflow(
+    workflow_id=created_workflow["workflow_id"],
+    parameters={
+        "product_name": "Sony WH-1000XM5 headphones"
+    }
+)
+
+print(f"Recommendation: {run.outputs['recommendation']}")
+```
+
+### How Visual Reasoning Works Here
+
+1. **Amazon Task**: Skyvern visually identifies the search box, enters the product name, locates the search button, clicks it, and identifies the first product listing - all without knowing Amazon's HTML structure
+2. **eBay Task**: The same process works on eBay even though the layout is completely different
+3. **Extraction**: Skyvern reads prices, titles, and ratings from the visual representation
+
+## Tutorial 2: Form Filling Across Multiple Sites
+
+Let's build a workflow that submits job applications across different job boards.
+
+### Creating an Adaptive Form-Filling Workflow
+
+```python
+workflow = {
+    "title": "Job Application Automation",
+    "description": "Apply to jobs across multiple platforms",
+    "workflow_definition": {
+        "blocks": [
+            {
+                "block_type": "for_loop",
+                "label": "apply_to_jobs",
+                "loop_over_parameter": {
+                    "parameter_type": "workflow",
+                    "key": "job_urls"
+                },
+                "loop_blocks": [
+                    {
+                        "block_type": "task",
+                        "label": "fill_application",
+                        "url": "{{ LOOP_VALUE }}",
+                        "navigation_goal": """
+                        Fill out the job application form with the following information:
+                        - Name: {{ applicant_name }}
+                        - Email: {{ applicant_email }}
+                        - Phone: {{ applicant_phone }}
+                        - Resume: Upload {{ resume_file }}
+                        - Cover letter: {{ cover_letter }}
+                        
+                        Submit the application when complete.
+                        """,
+                        "data_extraction_goal": "Extract confirmation message and application ID if available",
+                        "output_parameter": {
+                            "parameter_type": "context",
+                            "key": "application_result"
+                        }
+                    },
+                    {
+                        "block_type": "validation",
+                        "label": "verify_submission",
+                        "validation_type": "string_contains",
+                        "value_to_validate": {
+                            "parameter_type": "context",
+                            "key": "application_result"
+                        },
+                        "expected_substrings": [
+                            "success",
+                            "submitted",
+                            "received"
+                        ],
+                        "error_message": "Application submission may have failed"
+                    }
+                ]
+            }
+        ],
+        "parameters": [
+            {
+                "parameter_type": "workflow",
+                "key": "job_urls",
+                "workflow_parameter_type": "json"
+            },
+            {
+                "parameter_type": "workflow",
+                "key": "applicant_name",
+                "workflow_parameter_type": "string"
+            },
+            {
+                "parameter_type": "workflow",
+                "key": "applicant_email",
+                "workflow_parameter_type": "string"
+            },
+            {
+                "parameter_type": "workflow",
+                "key": "applicant_phone",
+                "workflow_parameter_type": "string"
+            },
+            {
+                "parameter_type": "workflow",
+                "key": "resume_file",
+                "workflow_parameter_type": "file_url"
+            },
+            {
+                "parameter_type": "workflow",
+                "key": "cover_letter",
+                "workflow_parameter_type": "string"
+            }
+        ]
+    }
+}
+```
+
+### Running the Job Application Workflow
+
+```python
+# Upload resume first
+resume_artifact = await skyvern.upload_file("path/to/resume.pdf")
+
+# Run workflow
+run = await skyvern.run_workflow(
+    workflow_id=workflow_id,
+    parameters={
+        "job_urls": [
+            "https://jobs.lever.co/company/position1",
+            "https://greenhouse.io/company/position2",
+            "https://workday.com/company/position3"
+        ],
+        "applicant_name": "Jane Doe",
+        "applicant_email": "jane@example.com",
+        "applicant_phone": "+1-555-0123",
+        "resume_file": resume_artifact["artifact_id"],
+        "cover_letter": "I am excited to apply for this position..."
+    }
+)
+```
+
+### Visual Reasoning Advantages
+
+- **Adapts to Different Forms**: Works on Lever, Greenhouse, Workday, and custom application pages
+- **Handles Dynamic Fields**: Understands optional vs required fields
+- **File Upload Intelligence**: Finds upload buttons regardless of styling
+- **Error Recovery**: Identifies validation messages and retries
+
+## Tutorial 3: Data Extraction with Visual Context
+
+Extract structured data from visually complex pages like invoices or receipts.
+
+### Invoice Data Extraction Workflow
+
+```python
+workflow = {
+    "title": "Invoice Data Extraction",
+    "description": "Extract structured data from invoice pages",
+    "workflow_definition": {
+        "blocks": [
+            {
+                "block_type": "task",
+                "label": "navigate_to_invoices",
+                "url": "{{ portal_url }}",
+                "navigation_goal": "Log in with username {{ username }} and password {{ password }}, then navigate to the invoices section",
+            },
+            {
+                "block_type": "task",
+                "label": "extract_invoice_list",
+                "navigation_goal": "Find all invoices from {{ start_date }} to {{ end_date }}",
+                "data_extraction_goal": """
+                Extract a list of all visible invoices with:
+                - Invoice number
+                - Date
+                - Amount
+                - Status
+                - Download link or button
+                """,
+                "data_schema": {
+                    "type": "object",
+                    "properties": {
+                        "invoices": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "invoice_number": {"type": "string"},
+                                    "date": {"type": "string"},
+                                    "amount": {"type": "number"},
+                                    "status": {"type": "string"},
+                                    "has_download": {"type": "boolean"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "output_parameter": {
+                    "parameter_type": "context",
+                    "key": "invoice_list"
+                }
+            },
+            {
+                "block_type": "for_loop",
+                "label": "download_invoices",
+                "loop_over_parameter": {
+                    "parameter_type": "context",
+                    "key": "invoice_list.invoices"
+                },
+                "loop_blocks": [
+                    {
+                        "block_type": "task",
+                        "label": "download_invoice",
+                        "navigation_goal": "Download the invoice with number {{ LOOP_VALUE.invoice_number }}",
+                        "download_suffix": "_{{ LOOP_VALUE.invoice_number }}.pdf"
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+### Key Visual Reasoning Features
+
+1. **Table Understanding**: Skyvern visually parses tables without knowing their structure
+2. **Button Detection**: Finds download buttons even with custom styling or icons
+3. **Date Recognition**: Understands various date formats visually
+4. **Amount Parsing**: Extracts monetary values from different currencies and formats
+
+## Tutorial 4: Multi-Step Navigation with Visual Validation
+
+Build a workflow that navigates through multi-step processes with visual checkpoints.
+
+### Insurance Quote Workflow
+
+```python
+workflow = {
+    "title": "Insurance Quote Automation",
+    "description": "Get quotes from multiple insurance providers",
+    "workflow_definition": {
+        "blocks": [
+            {
+                "block_type": "task",
+                "label": "start_quote",
+                "url": "{{ insurance_url }}",
+                "navigation_goal": """
+                Start a new auto insurance quote with:
+                - ZIP code: {{ zip_code }}
+                - Vehicle year: {{ vehicle_year }}
+                - Vehicle make: {{ vehicle_make }}
+                - Vehicle model: {{ vehicle_model }}
+                """,
+                "screenshot_every_nth_action": 1  # Capture every step
+            },
+            {
+                "block_type": "task",
+                "label": "driver_information",
+                "navigation_goal": """
+                Fill out driver information:
+                - Date of birth: {{ dob }}
+                - Gender: {{ gender }}
+                - Marital status: {{ marital_status }}
+                - License obtained at age: {{ license_age }}
+                """,
+                "complete_criterion": "I can see questions about coverage options or the next section"
+            },
+            {
+                "block_type": "task",
+                "label": "coverage_selection",
+                "navigation_goal": """
+                Select coverage options:
+                - Liability: {{ liability_amount }}
+                - Collision: {{ collision_coverage }}
+                - Comprehensive: {{ comprehensive_coverage }}
+                
+                Proceed to see the final quote.
+                """,
+                "complete_criterion": "I can see the final quote amount or price breakdown"
+            },
+            {
+                "block_type": "task",
+                "label": "extract_quote",
+                "data_extraction_goal": """
+                Extract the insurance quote details:
+                - Monthly premium
+                - Annual premium
+                - Coverage summary
+                - Deductibles
+                - Any discounts applied
+                """,
+                "data_schema": {
+                    "type": "object",
+                    "properties": {
+                        "monthly_premium": {"type": "number"},
+                        "annual_premium": {"type": "number"},
+                        "coverage_summary": {"type": "string"},
+                        "deductibles": {"type": "object"},
+                        "discounts": {"type": "array", "items": {"type": "string"}}
+                    }
+                },
+                "output_parameter": {
+                    "parameter_type": "context",
+                    "key": "quote_details"
+                }
+            }
+        ]
+    }
+}
+```
+
+### Visual Reasoning for Complex Forms
+
+Skyvern handles:
+- **Multi-page forms**: Automatically finds "Next" buttons
+- **Conditional questions**: Answers follow-up questions based on previous responses
+- **Field inference**: Determines eligible driver age from license date
+- **Error detection**: Identifies and fixes validation errors visually
+
+## Best Practices for Visual Reasoning Workflows
+
+### 1. Write Clear Navigation Goals
+
+```python
+# Good - Specific and actionable
+"navigation_goal": "Click on 'Products' in the main menu, then select 'Laptops' from the dropdown"
+
+# Better - Outcome-focused
+"navigation_goal": "Navigate to the laptops product listing page"
+```
+
+### 2. Use Data Schemas for Extraction
+
+Always define schemas for structured data extraction:
+
+```python
+"data_extraction_goal": "Extract product information",
+"data_schema": {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "price": {"type": "number"},
+        "in_stock": {"type": "boolean"},
+        "reviews": {
+            "type": "object",
+            "properties": {
+                "average_rating": {"type": "number"},
+                "count": {"type": "integer"}
+            }
+        }
+    },
+    "required": ["title", "price"]
+}
+```
+
+### 3. Add Validation Blocks
+
+Validate critical steps:
+
+```python
+{
+    "block_type": "validation",
+    "label": "verify_login",
+    "validation_type": "string_not_contains",
+    "value_to_validate": {
+        "parameter_type": "context",
+        "key": "page_content"
+    },
+    "expected_substrings": ["login", "sign in", "incorrect password"],
+    "error_message": "Login appears to have failed"
+}
+```
+
+### 4. Use Complete Criterion
+
+Help Skyvern know when a step is done:
+
+```python
+{
+    "block_type": "task",
+    "label": "checkout",
+    "navigation_goal": "Complete the checkout process",
+    "complete_criterion": "I can see an order confirmation number or success message"
+}
+```
+
+### 5. Leverage LLM Reasoning
+
+Use text prompts for complex logic:
+
+```python
+{
+    "block_type": "text_prompt",
+    "label": "analyze_results",
+    "llm_key": "ANTHROPIC_CLAUDE3.5_SONNET",
+    "prompt": """
+    Analyze these search results: {{ CONTEXT.search_results }}
+    
+    Determine which result best matches these criteria:
+    - Must be from a reputable seller (rating > 4.5)
+    - Price should be within {{ budget }} +/- 10%
+    - Shipping available to {{ location }}
+    
+    Return JSON with the best match and reasoning.
+    """,
+    "json_schema": {
+        "type": "object",
+        "properties": {
+            "best_match": {"type": "string"},
+            "reasoning": {"type": "string"}
+        }
+    }
+}
+```
+
+### 6. Handle Files Appropriately
+
+```python
+{
+    "block_type": "task",
+    "label": "upload_documents",
+    "navigation_goal": "Upload the resume file",
+    "file_uploads": {
+        "resume": {
+            "parameter_type": "workflow",
+            "key": "resume_file"
+        }
+    }
+}
+```
+
+## Debugging Visual Reasoning Workflows
+
+### View Screenshots
+
+Every step captures screenshots. Access them via:
+
+```python
+# Get run details
+run = await skyvern.get_run(run_id)
+
+# Download screenshots
+artifacts = await skyvern.get_run_artifacts(run_id)
+for artifact in artifacts:
+    if artifact["artifact_type"] == "screenshot":
+        # Download and review
+        await skyvern.download_artifact(artifact["artifact_id"])
+```
+
+### Use the Timeline View
+
+The Skyvern UI provides a timeline view showing:
+- Each action taken
+- Screenshots at each step
+- LLM reasoning
+- Time spent per action
+
+### Enable Verbose Logging
+
+```python
+skyvern = Skyvern(
+    base_url="http://localhost:8000",
+    api_key="your-key",
+    verbose=True  # Enables detailed logging
+)
+```
+
+## Advanced: Custom Visual Reasoning
+
+For specialized visual tasks, use custom code blocks:
+
+```python
+{
+    "block_type": "code",
+    "label": "custom_ocr",
+    "code": """
+import pytesseract
+from PIL import Image
+
+# Access the current page screenshot
+screenshot_path = SKYVERN.get_current_screenshot()
+image = Image.open(screenshot_path)
+
+# Perform OCR
+text = pytesseract.image_to_string(image)
+
+# Process and return
+OUTPUT = {
+    "extracted_text": text,
+    "confidence": "high" if len(text) > 100 else "low"
+}
+    """,
+    "output_parameter": {
+        "parameter_type": "context",
+        "key": "ocr_result"
+    }
+}
+```
+
+## Conclusion
+
+Visual reasoning workflows in Skyvern provide:
+- **Adaptability**: Works across different websites without custom code
+- **Resilience**: Handles layout changes automatically
+- **Intelligence**: Uses LLM reasoning for complex decisions
+- **Maintainability**: Easier to understand and modify than selector-based automation
+
+Start with simple tasks and gradually build more complex workflows as you understand how Skyvern's visual reasoning works.
+
+## Next Steps
+
+- [Prompting Guide](/getting-started/prompting-guide) - Learn how to write effective prompts
+- [Workflow Blocks](/workflows/workflow-blocks-details) - Explore all available block types
+- [Architecture Guide](/getting-started/architecture-guide) - Understand the underlying system
+- [API Reference](/api) - Explore the full API capabilities

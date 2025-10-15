@@ -412,7 +412,18 @@ Make sure to have [uv](https://docs.astral.sh/uv/getting-started/installation/) 
 
 # Documentation
 
-More extensive documentation can be found on our [📕 docs page](https://www.skyvern.com/docs). Please let us know if something is unclear or missing by opening an issue or reaching out to us [via email](mailto:founders@skyvern.com) or [discord](https://discord.gg/fG2XXEuQX3).
+More extensive documentation can be found on our [📕 docs page](https://www.skyvern.com/docs):
+
+## Key Documentation
+
+- **[Architecture Guide](https://www.skyvern.com/docs/getting-started/architecture-guide)** - Understand Skyvern's multi-agent system
+- **[Visual Reasoning Tutorial](https://www.skyvern.com/docs/getting-started/visual-reasoning-tutorial)** - Build vision-based automation workflows
+- **[Deployment Guide](https://www.skyvern.com/docs/deployment/overview)** - Deploy locally, Docker, or Kubernetes
+- **[Environment Variables](https://www.skyvern.com/docs/deployment/environment-variables)** - Complete configuration reference
+- **[API Reference](https://www.skyvern.com/docs/api)** - Full API documentation
+- **[Workflow Blocks](https://www.skyvern.com/docs/workflows/workflow-blocks-details)** - All available workflow components
+
+Please let us know if something is unclear or missing by opening an issue or reaching out to us [via email](mailto:founders@skyvern.com) or [discord](https://discord.gg/fG2XXEuQX3).
 
 # Supported LLMs
 | Provider | Supported Models |

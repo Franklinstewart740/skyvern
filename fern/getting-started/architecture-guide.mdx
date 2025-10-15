@@ -1,0 +1,267 @@
+---
+title: Architecture Guide
+subtitle: Understanding Skyvern's Multi-Agent Architecture
+slug: getting-started/architecture-guide
+---
+
+# Skyvern 2.0 Architecture
+
+Skyvern 2.0 uses a sophisticated multi-agent system that combines Vision LLMs, computer vision, and browser automation to navigate and interact with websites autonomously.
+
+## System Overview
+
+<picture>
+  <img className="hidden dark:block" src="../images/skyvern_2_0_system_diagram.png" alt="Skyvern 2.0 System Diagram"/>
+  <img className="block dark:hidden" src="../images/skyvern_2_0_system_diagram.png" alt="Skyvern 2.0 System Diagram" />
+</picture>
+
+## Core Components
+
+### 1. Agent System (`skyvern/agent/`)
+
+Skyvern uses a swarm of specialized agents to comprehend websites and plan/execute actions:
+
+- **Navigator Agent**: Plans navigation paths and determines next steps
+- **Action Agent**: Executes specific browser actions (clicks, typing, scrolling)
+- **Extraction Agent**: Extracts structured data from web pages
+- **Validation Agent**: Verifies workflow execution and data quality
+
+Each agent leverages Vision LLMs to understand the visual context of web pages without relying on brittle selectors.
+
+### 2. Browser Engine (`skyvern/webeye/`)
+
+The browser automation layer built on Playwright provides:
+
+- **Visual Element Detection**: Computer vision-based element identification
+- **Action Execution**: Robust interaction with web elements
+- **Screenshot Management**: Captures visual state for LLM analysis
+- **Session Management**: Maintains browser state across workflow steps
+
+### 3. Workflow Engine (`skyvern/services/`)
+
+Orchestrates complex multi-step workflows with support for:
+
+- **Task Blocks**: Individual automation steps
+- **Browser Actions**: Direct browser interactions
+- **Data Extraction**: Structured data capture
+- **Validation Blocks**: Quality assurance checkpoints
+- **For Loops**: Iteration over collections
+- **Conditionals**: Dynamic workflow branching
+- **Custom Code**: Python code execution within workflows
+- **HTTP Requests**: External API integration
+- **File Operations**: Upload/download handling
+
+### 4. API Layer (`skyvern/forge/`)
+
+FastAPI-based REST API providing:
+
+- Task and workflow execution endpoints
+- Browser session management
+- Credential and authentication handling
+- Artifact storage and retrieval
+- Real-time WebSocket updates for livestreaming
+
+## LLM Provider Architecture
+
+Skyvern supports multiple LLM providers through a flexible provider system:
+
+```
+skyvern/forge/sdk/api/llm/
+├── api_handler_factory.py  # Provider factory
+├── openai_handler.py       # OpenAI implementation
+├── anthropic_handler.py    # Anthropic implementation
+├── azure_handler.py        # Azure OpenAI implementation
+├── bedrock_handler.py      # AWS Bedrock implementation
+└── gemini_handler.py       # Google Gemini implementation
+```
+
+### Primary vs Secondary LLM
+
+Skyvern uses a two-tier LLM strategy:
+
+- **Primary LLM** (`LLM_KEY`): Heavy tasks like visual reasoning and planning
+- **Secondary LLM** (`SECONDARY_LLM_KEY`): Lightweight tasks like data extraction and validation
+
+This optimizes both performance and cost.
+
+## Data Flow
+
+1. **Task Submission**: User creates a task/workflow via UI, API, or SDK
+2. **Planning**: Navigator agent analyzes the goal and creates an execution plan
+3. **Visual Analysis**: Browser captures screenshots, agents analyze visual context
+4. **Action Execution**: Action agent interacts with identified elements
+5. **Validation**: Validation agent verifies successful execution
+6. **Data Extraction**: Extraction agent captures requested data
+7. **Result Storage**: Artifacts and results are stored and returned
+
+## State Management
+
+### Task State
+
+Tasks progress through states:
+- `created` → `running` → `completed` / `failed` / `terminated`
+
+### Workflow Runs
+
+Workflows maintain:
+- **Block State**: Status of each workflow block
+- **Parameter Context**: Variables passed between blocks
+- **Browser Session**: Persistent browser state across blocks
+
+### Caching
+
+- **Redis**: Session state, rate limiting, distributed locks
+- **PostgreSQL**: Persistent storage for tasks, workflows, credentials
+- **S3-compatible Storage**: Artifacts, screenshots, downloaded files
+
+## Browser Session Architecture
+
+Skyvern supports multiple browser session modes:
+
+### 1. Ephemeral Sessions
+Created per task, automatically cleaned up after completion.
+
+### 2. Persistent Sessions (Beta)
+Long-lived browser sessions that maintain:
+- Login state
+- Cookies and local storage
+- Browser history
+- Cache
+
+### 3. CDP Connect Mode
+Connect to external Chrome instances via Chrome DevTools Protocol:
+- Use your local Chrome browser
+- Custom browser profiles
+- Remote browser instances
+
+## Security Architecture
+
+### Credential Management
+
+Skyvern provides a secure credential vault:
+
+- **Password Storage**: AES-256 encrypted at rest
+- **TOTP Support**: Time-based one-time passwords for 2FA
+- **Credit Card Vault**: PCI-compliant card storage
+- **Password Manager Integration**: Bitwarden integration
+
+### API Security
+
+- **API Key Authentication**: Per-organization API keys
+- **Rate Limiting**: Protects against abuse
+- **CORS Configuration**: Controlled origin access
+- **Request Validation**: Pydantic schema validation
+
+## Observability
+
+### Logging
+
+Structured logging via `structlog`:
+- Request/response logging
+- Agent decision logging
+- Error tracking with stack traces
+
+### Artifacts
+
+Every task execution generates:
+- Screenshots at each step
+- Action traces
+- LLM prompts and responses
+- Error logs
+- Downloaded files
+
+### Timeline View
+
+Visual timeline showing:
+- Agent decisions
+- Actions executed
+- Screenshots captured
+- Time spent per step
+
+## Scalability
+
+### Horizontal Scaling
+
+Skyvern components can scale independently:
+
+- **API Servers**: Stateless, can run multiple instances
+- **Task Workers**: Parallel task execution
+- **Browser Instances**: Isolated per task
+
+### Queue-based Execution
+
+- **Temporal/Dramatiq**: Distributed task queue
+- **Background Jobs**: Async workflow execution
+- **Retry Logic**: Automatic failure recovery
+
+## Extension Points
+
+### 1. Custom LLM Providers
+
+Implement the `LLMAPIHandler` interface to add new providers:
+
+```python
+from skyvern.forge.sdk.api.llm import LLMAPIHandler
+
+class CustomLLMHandler(LLMAPIHandler):
+    async def generate_completion(self, prompt, **kwargs):
+        # Your implementation
+        pass
+```
+
+### 2. Custom Workflow Blocks
+
+Extend workflow capabilities by creating custom blocks:
+
+```python
+from skyvern.forge.sdk.workflow.models.block import Block
+
+class CustomBlock(Block):
+    async def execute(self, context):
+        # Your implementation
+        pass
+```
+
+### 3. Custom Artifact Storage
+
+Implement storage backends beyond S3:
+
+```python
+from skyvern.forge.sdk.artifact.storage import ArtifactStorage
+
+class CustomStorage(ArtifactStorage):
+    async def store(self, artifact_id, data):
+        # Your implementation
+        pass
+```
+
+## Performance Optimization
+
+### Visual Reasoning Optimization
+
+- **Screenshot Compression**: Reduces LLM token usage
+- **Incremental DOM Updates**: Only analyzes changed elements
+- **Action Caching**: Reuses similar action patterns
+
+### Database Optimization
+
+- **Connection Pooling**: Efficient database connections
+- **Indexed Queries**: Optimized query performance
+- **Async Operations**: Non-blocking database access
+
+### Browser Optimization
+
+- **Resource Filtering**: Blocks unnecessary resources
+- **Parallel Tab Management**: Multiple tabs per browser instance
+- **Efficient Cleanup**: Automatic resource deallocation
+
+## Deployment Architecture
+
+Skyvern can be deployed in multiple configurations:
+
+- **Single Server**: All components on one machine
+- **Docker Compose**: Containerized multi-service setup
+- **Kubernetes**: Production-grade orchestration
+- **Skyvern Cloud**: Fully managed SaaS platform
+
+See the [Deployment Guide](/deployment/overview) for detailed instructions.
