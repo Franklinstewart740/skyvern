@@ -111,6 +111,16 @@ class Settings(BaseSettings):
     PROMPT_CACHE_WINDOW_HOURS: int = 24
 
     #####################
+    # Prompt Cache Settings #
+    #####################
+    ENABLE_PROMPT_CACHE: bool = False
+    PROMPT_CACHE_BACKEND: str = "postgres"  # "postgres" or "redis"
+    PROMPT_CACHE_TTL_HOURS: int = 168  # 7 days default
+    ENABLE_PROMPT_CACHE_REPLAY: bool = False
+    PROMPT_CACHE_EVICTION_ENABLED: bool = True
+    PROMPT_CACHE_EVICTION_INTERVAL_HOURS: int = 24
+
+    #####################
     # LLM Configuration #
     #####################
     # ACTIVE LLM PROVIDER

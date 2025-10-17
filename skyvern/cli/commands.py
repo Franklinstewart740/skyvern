@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 from .docs import docs_app
 from .init_command import init, init_browser
+from .prompt_cache import cache_app as prompt_cache_app
 from .quickstart import quickstart_app
 from .run_commands import run_app
 from .status import status_app
@@ -22,6 +23,7 @@ cli_app.add_typer(
 )
 cli_app.add_typer(workflow_app, name="workflow", help="Workflow management commands.")
 cli_app.add_typer(tasks_app, name="tasks", help="Task management commands.")
+cli_app.add_typer(prompt_cache_app, name="cache", help="Manage LLM prompt cache.")
 cli_app.add_typer(docs_app, name="docs", help="Open Skyvern documentation.")
 cli_app.add_typer(status_app, name="status", help="Check if Skyvern services are running.")
 cli_app.add_typer(stop_app, name="stop", help="Stop Skyvern services.")
