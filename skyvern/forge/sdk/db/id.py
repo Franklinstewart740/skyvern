@@ -67,6 +67,8 @@ OBSERVER_RECORDING_PREFIX = "obr"
 OBSERVER_DOM_SNAPSHOT_PREFIX = "ods"
 OBSERVER_INTERACTION_PREFIX = "oin"
 PROMPT_CACHE_PREFIX = "pcache"
+LLM_TELEMETRY_PREFIX = "llmt"
+LLM_BENCHMARK_SUMMARY_PREFIX = "llmbs"
 
 
 def generate_workflow_id() -> str:
@@ -95,13 +97,23 @@ def generate_workflow_script_id() -> str:
 
 
  def generate_prompt_cache_id() -> str:
-    int_id = generate_id()
-    return f"{PROMPT_CACHE_PREFIX}_{int_id}"
+     int_id = generate_id()
+     return f"{PROMPT_CACHE_PREFIX}_{int_id}"
+
+
+ def generate_llm_telemetry_id() -> str:
+     int_id = generate_id()
+     return f"{LLM_TELEMETRY_PREFIX}_{int_id}"
+
+
+ def generate_llm_benchmark_summary_id() -> str:
+     int_id = generate_id()
+     return f"{LLM_BENCHMARK_SUMMARY_PREFIX}_{int_id}"
 
 
  def generate_aws_secret_parameter_id() -> str:
-    int_id = generate_id()
-    return f"{AWS_SECRET_PARAMETER_PREFIX}_{int_id}"
+     int_id = generate_id()
+     return f"{AWS_SECRET_PARAMETER_PREFIX}_{int_id}"
 
 
 def generate_workflow_parameter_id() -> str:

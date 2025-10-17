@@ -31,6 +31,8 @@ from skyvern.forge.sdk.db.id import (
     generate_credential_id,
     generate_credential_parameter_id,
     generate_debug_session_id,
+    generate_llm_benchmark_summary_id,
+    generate_llm_telemetry_id,
     generate_observer_dom_snapshot_id,
     generate_observer_interaction_id,
     generate_observer_recording_id,
@@ -1075,3 +1077,68 @@ class PromptCacheModel(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     accessed_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class LLMCallTelemetryModel(Base):
+    __tablename__ = "llm_call_telemetry"
+    __table_args__ = (
+        Index("ix_llm_call_telemetry_org_created", "organization_id", "created_at"),
+        Index("ix_llm_call_telemetry_provider_created", "provider", "created_at"),
+        Index("ix_llm_call_telemetry_prompt_name", "prompt_name"),
+        Index("ix_llm_call_telemetry_success", "success"),
+    )
+
+    telemetry_id = Column(String, primary_key=True, default=generate_llm_telemetry_id)
+    organization_id = Column(String, nullable=True)
+    llm_key = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    model_name = Column(String, nullable=True)
+    prompt_name = Column(String, nullable=False)
+    step_id = Column(String, nullable=True)
+    task_id = Column(String, nullable=True)
+    workflow_run_id = Column(String, nullable=True)
+    thought_id = Column(String, nullable=True)
+    latency_ms = Column(Integer, nullable=False)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    reasoning_tokens = Column(Integer, nullable=True)
+    cached_tokens = Column(Integer, nullable=True)
+    total_tokens = Column(Integer, nullable=True)
+    cost = Column(Numeric, nullable=True)
+    success = Column(Boolean, nullable=False)
+    error_type = Column(String, nullable=True)
+    error_message = Column(UnicodeText, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class LLMBenchmarkSummaryModel(Base):
+    __tablename__ = "llm_benchmark_summaries"
+    __table_args__ = (
+        Index("ix_llm_benchmark_summaries_provider_period", "provider", "period_start", "period_end"),
+        Index("ix_llm_benchmark_summaries_org_period", "organization_id", "period_start"),
+        Index("ix_llm_benchmark_summaries_time_period", "time_period", "period_start"),
+    )
+
+    summary_id = Column(String, primary_key=True, default=generate_llm_benchmark_summary_id)
+    organization_id = Column(String, nullable=True)
+    provider = Column(String, nullable=False)
+    model_name = Column(String, nullable=True)
+    prompt_name = Column(String, nullable=True)
+    time_period = Column(String, nullable=False)
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    total_calls = Column(Integer, nullable=False)
+    successful_calls = Column(Integer, nullable=False)
+    failed_calls = Column(Integer, nullable=False)
+    avg_latency_ms = Column(sqlalchemy.Float, nullable=True)
+    p50_latency_ms = Column(sqlalchemy.Float, nullable=True)
+    p95_latency_ms = Column(sqlalchemy.Float, nullable=True)
+    p99_latency_ms = Column(sqlalchemy.Float, nullable=True)
+    total_input_tokens = Column(sqlalchemy.BigInteger, nullable=True)
+    total_output_tokens = Column(sqlalchemy.BigInteger, nullable=True)
+    total_reasoning_tokens = Column(sqlalchemy.BigInteger, nullable=True)
+    total_cached_tokens = Column(sqlalchemy.BigInteger, nullable=True)
+    total_cost = Column(Numeric, nullable=True)
+    avg_cost = Column(Numeric, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)

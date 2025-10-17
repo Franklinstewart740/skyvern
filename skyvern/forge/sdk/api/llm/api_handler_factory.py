@@ -33,6 +33,7 @@ from skyvern.forge.sdk.models import Step
 from skyvern.forge.sdk.schemas.ai_suggestions import AISuggestion
 from skyvern.forge.sdk.schemas.task_v2 import TaskV2, Thought
 from skyvern.forge.sdk.trace import TraceManager
+from skyvern.services.llm_telemetry_utils import extract_model_name_from_llm_key, extract_provider_from_llm_key
 from skyvern.utils.image_resizer import Resolution, get_resize_target_dimension, resize_screenshots
 
 LOG = structlog.get_logger()
@@ -185,6 +186,77 @@ class LLMAPIHandlerFactory:
                 exc_info=True,
             )
             return default
+
+    @staticmethod
+    async def _record_llm_telemetry(
+        *,
+        llm_key: str,
+        llm_config: LLMConfig | LLMRouterConfig,
+        prompt_name: str,
+        duration_seconds: float,
+        success: bool,
+        organization_id: str | None,
+        step: Step | None,
+        task_v2: TaskV2 | None,
+        thought: Thought | None,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        reasoning_tokens: int | None,
+        cached_tokens: int | None,
+        cost: float | None,
+        model_name_override: str | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        telemetry_service = getattr(app, "LLM_TELEMETRY_SERVICE", None)
+        if telemetry_service is None:
+            return
+
+        provider = extract_provider_from_llm_key(llm_key)
+        model_name = model_name_override or extract_model_name_from_llm_key(llm_key, llm_config)
+
+        resolved_org_id = organization_id or (
+            step.organization_id if step else (
+                getattr(task_v2, "organization_id", None) if task_v2 else (thought.organization_id if thought else None)
+            )
+        )
+
+        step_id = step.step_id if step else None
+        task_id = step.task_id if step else getattr(task_v2, "task_v2_id", None)
+        workflow_run_id = getattr(task_v2, "workflow_run_id", None)
+        thought_id = thought.observer_thought_id if thought else None
+
+        latency_ms = max(int(duration_seconds * 1000), 0)
+        truncated_error_message = error_message[:500] if error_message else None
+
+        try:
+            await telemetry_service.record_llm_call(
+                llm_key=llm_key,
+                provider=provider,
+                prompt_name=prompt_name,
+                latency_ms=latency_ms,
+                success=success,
+                organization_id=resolved_org_id,
+                model_name=model_name,
+                step_id=step_id,
+                task_id=task_id,
+                workflow_run_id=workflow_run_id,
+                thought_id=thought_id,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                reasoning_tokens=reasoning_tokens,
+                cached_tokens=cached_tokens,
+                cost=cost,
+                error_type=error_type,
+                error_message=truncated_error_message,
+            )
+        except Exception:
+            LOG.debug(
+                "Failed to record LLM telemetry",
+                llm_key=llm_key,
+                prompt_name=prompt_name,
+                exc_info=True,
+            )
 
     @staticmethod
     def get_llm_api_handler_with_router(llm_key: str) -> LLMAPIHandler:
@@ -346,11 +418,35 @@ class LLMAPIHandlerFactory:
                 thought=thought,
                 ai_suggestion=ai_suggestion,
             )
+            resolved_org_id = organization_id or (
+                step.organization_id if step else (thought.organization_id if thought else None)
+            )
+
             try:
                 response = await router.acompletion(
                     model=main_model_group, messages=messages, timeout=settings.LLM_CONFIG_TIMEOUT, **parameters
                 )
             except litellm.exceptions.APIError as e:
+                duration_seconds = time.time() - start_time
+                await LLMAPIHandlerFactory._record_llm_telemetry(
+                    llm_key=llm_key,
+                    llm_config=llm_config,
+                    prompt_name=prompt_name,
+                    duration_seconds=duration_seconds,
+                    success=False,
+                    organization_id=resolved_org_id,
+                    step=step,
+                    task_v2=task_v2,
+                    thought=thought,
+                    input_tokens=None,
+                    output_tokens=None,
+                    reasoning_tokens=None,
+                    cached_tokens=None,
+                    cost=None,
+                    model_name_override=main_model_group,
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                )
                 raise LLMProviderErrorRetryableTask(llm_key) from e
             except litellm.exceptions.ContextWindowExceededError as e:
                 duration_seconds = time.time() - start_time
@@ -360,6 +456,25 @@ class LLMAPIHandlerFactory:
                     model=main_model_group,
                     prompt_name=prompt_name,
                     duration_seconds=duration_seconds,
+                )
+                await LLMAPIHandlerFactory._record_llm_telemetry(
+                    llm_key=llm_key,
+                    llm_config=llm_config,
+                    prompt_name=prompt_name,
+                    duration_seconds=duration_seconds,
+                    success=False,
+                    organization_id=resolved_org_id,
+                    step=step,
+                    task_v2=task_v2,
+                    thought=thought,
+                    input_tokens=None,
+                    output_tokens=None,
+                    reasoning_tokens=None,
+                    cached_tokens=None,
+                    cost=None,
+                    model_name_override=main_model_group,
+                    error_type=type(e).__name__,
+                    error_message=str(e),
                 )
                 raise SkyvernContextWindowExceededError() from e
             except ValueError as e:
@@ -371,6 +486,25 @@ class LLMAPIHandlerFactory:
                     prompt_name=prompt_name,
                     duration_seconds=duration_seconds,
                 )
+                await LLMAPIHandlerFactory._record_llm_telemetry(
+                    llm_key=llm_key,
+                    llm_config=llm_config,
+                    prompt_name=prompt_name,
+                    duration_seconds=duration_seconds,
+                    success=False,
+                    organization_id=resolved_org_id,
+                    step=step,
+                    task_v2=task_v2,
+                    thought=thought,
+                    input_tokens=None,
+                    output_tokens=None,
+                    reasoning_tokens=None,
+                    cached_tokens=None,
+                    cost=None,
+                    model_name_override=main_model_group,
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                )
                 raise LLMProviderErrorRetryableTask(llm_key) from e
             except Exception as e:
                 duration_seconds = time.time() - start_time
@@ -380,6 +514,25 @@ class LLMAPIHandlerFactory:
                     model=main_model_group,
                     prompt_name=prompt_name,
                     duration_seconds=duration_seconds,
+                )
+                await LLMAPIHandlerFactory._record_llm_telemetry(
+                    llm_key=llm_key,
+                    llm_config=llm_config,
+                    prompt_name=prompt_name,
+                    duration_seconds=duration_seconds,
+                    success=False,
+                    organization_id=resolved_org_id,
+                    step=step,
+                    task_v2=task_v2,
+                    thought=thought,
+                    input_tokens=None,
+                    output_tokens=None,
+                    reasoning_tokens=None,
+                    cached_tokens=None,
+                    cost=None,
+                    model_name_override=main_model_group,
+                    error_type=type(e).__name__,
+                    error_message=str(e),
                 )
                 raise LLMProviderError(llm_key) from e
 
@@ -474,6 +627,7 @@ class LLMAPIHandlerFactory:
                 step.organization_id if step else (thought.organization_id if thought else None)
             )
             duration_seconds = time.time() - start_time
+            latency_ms = int(duration_seconds * 1000)
             LOG.info(
                 "LLM API handler duration metrics",
                 llm_key=llm_key,
@@ -488,6 +642,25 @@ class LLMAPIHandlerFactory:
                 reasoning_tokens=reasoning_tokens if reasoning_tokens > 0 else None,
                 cached_tokens=cached_tokens if cached_tokens > 0 else None,
                 llm_cost=llm_cost if llm_cost > 0 else None,
+            )
+
+            # Record telemetry (non-blocking)
+            await LLMAPIHandlerFactory._record_llm_telemetry(
+                llm_key=llm_key,
+                llm_config=llm_config,
+                prompt_name=prompt_name,
+                duration_seconds=duration_seconds,
+                success=True,
+                organization_id=organization_id,
+                step=step,
+                task_v2=task_v2,
+                thought=thought,
+                input_tokens=prompt_tokens if prompt_tokens > 0 else None,
+                output_tokens=completion_tokens if completion_tokens > 0 else None,
+                reasoning_tokens=reasoning_tokens if reasoning_tokens > 0 else None,
+                cached_tokens=cached_tokens if cached_tokens > 0 else None,
+                cost=llm_cost if llm_cost and llm_cost > 0 else None,
+                model_name_override=main_model_group,
             )
 
             return parsed_response
