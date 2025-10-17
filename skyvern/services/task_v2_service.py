@@ -56,6 +56,7 @@ from skyvern.schemas.workflows import (
     WorkflowDefinitionYAML,
     WorkflowStatus,
 )
+from skyvern.services import task_planning_service
 from skyvern.utils.prompt_engine import load_prompt_with_elements
 from skyvern.utils.strings import generate_random_string
 from skyvern.webeye.browser_factory import BrowserState
@@ -296,6 +297,26 @@ async def initialize_task_v2(
             organization_id=organization.organization_id,
         )
         raise
+
+    try:
+        planning_artifacts = await task_planning_service.ensure_plan_for_task(
+            organization_id=organization.organization_id,
+            task_id=task_v2.observer_cruise_id,
+            user_prompt=user_prompt,
+            starting_url=url,
+            llm_key=task_v2.llm_key,
+        )
+        if planning_artifacts.plan:
+            task_v2.plan = planning_artifacts.plan
+        if planning_artifacts.reasoning_traces:
+            task_v2.reasoning_traces = planning_artifacts.reasoning_traces
+    except Exception:  # noqa: BLE001
+        LOG.debug(
+            "Failed to attach planning artifacts to task v2",
+            task_v2_id=task_v2.observer_cruise_id,
+            organization_id=organization.organization_id,
+            exc_info=True,
+        )
 
     return task_v2
 
@@ -1714,6 +1735,15 @@ async def build_task_v2_run_response(task_v2: TaskV2) -> TaskRunResponse:
             f"{task_v2.workflow_permanent_id}/{task_v2.workflow_run_id}"
         )
 
+    planning_artifacts = await task_planning_service.get_plan_and_traces(
+        task_id=task_v2.observer_cruise_id,
+        organization_id=task_v2.organization_id,
+    )
+    if planning_artifacts.plan and not task_v2.plan:
+        task_v2.plan = planning_artifacts.plan
+    if planning_artifacts.reasoning_traces and not task_v2.reasoning_traces:
+        task_v2.reasoning_traces = planning_artifacts.reasoning_traces
+
     return TaskRunResponse(
         run_id=task_v2.observer_cruise_id,
         run_type=RunType.task_v2,
@@ -1741,6 +1771,8 @@ async def build_task_v2_run_response(task_v2: TaskV2) -> TaskRunResponse:
             error_code_mapping=task_v2.error_code_mapping,
         ),
         errors=workflow_run_resp.errors if workflow_run_resp else None,
+        plan=planning_artifacts.plan,
+        reasoning_traces=planning_artifacts.reasoning_traces or None,
     )
 
 
