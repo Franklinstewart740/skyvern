@@ -91,6 +91,7 @@ from skyvern.schemas.runs import CUA_ENGINES, RunEngine
 from skyvern.schemas.steps import AgentStepOutput
 from skyvern.services import run_service, service_utils
 from skyvern.services.action_service import get_action_history
+from skyvern.services.hybrid_planner import HybridPlanner
 from skyvern.utils.image_resizer import Resolution
 from skyvern.utils.prompt_engine import MaxStepsReasonResponse, load_prompt_with_elements
 from skyvern.webeye.actions.action_types import ActionType
@@ -1071,6 +1072,64 @@ class ForgeAgent:
                         ]
 
             detailed_agent_step_output.actions = actions
+            
+            # Apply hybrid symbolic + LLM planning validation
+            if task_block and task_block.symbolic_config:
+                try:
+                    hybrid_planner = HybridPlanner()
+                    
+                    # Load configuration from block
+                    hybrid_planner.load_from_block(task_block)
+                    
+                    # Get current URL
+                    current_url = None
+                    if page := await browser_state.get_working_page():
+                        current_url = page.url
+                    
+                    # Validate actions against symbolic constraints
+                    validation_result = hybrid_planner.validate_and_filter_actions(
+                        actions=actions,
+                        scraped_page=scraped_page,
+                        current_url=current_url,
+                        task=task,
+                    )
+                    
+                    # Log audit data
+                    audit_log = hybrid_planner.export_audit_log(validation_result)
+                    LOG.info(
+                        "Hybrid planning validation complete",
+                        task_id=task.task_id,
+                        step_id=step.step_id,
+                        audit_log=audit_log,
+                    )
+                    
+                    # Use validated actions
+                    if validation_result.filtered_actions:
+                        actions = validation_result.filtered_actions
+                        detailed_agent_step_output.actions = actions
+                        LOG.info(
+                            "Using validated actions from hybrid planner",
+                            task_id=task.task_id,
+                            step_id=step.step_id,
+                            original_count=validation_result.audit_data.get("total_actions", 0),
+                            filtered_count=len(actions),
+                        )
+                    else:
+                        LOG.warning(
+                            "No valid actions after hybrid planning validation",
+                            task_id=task.task_id,
+                            step_id=step.step_id,
+                            rejected=len(validation_result.rejected_actions),
+                        )
+                except Exception as e:
+                    LOG.warning(
+                        "Hybrid planning validation failed, continuing with original actions",
+                        task_id=task.task_id,
+                        step_id=step.step_id,
+                        error=str(e),
+                        exc_info=True,
+                    )
+            
             if len(actions) == 0:
                 LOG.info(
                     "No actions to execute, marking step as failed",

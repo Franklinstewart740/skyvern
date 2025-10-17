@@ -84,6 +84,7 @@ from skyvern.forge.sdk.workflow.models.parameter import (
     ParameterType,
     WorkflowParameter,
 )
+from skyvern.forge.sdk.workflow.models.symbolic import SymbolicPlanConfig
 from skyvern.schemas.runs import RunEngine
 from skyvern.schemas.workflows import BlockResult, BlockStatus, BlockType, FileStorageType, FileType
 from skyvern.utils.strings import generate_random_string
@@ -113,6 +114,7 @@ class Block(BaseModel, abc.ABC):
     output_parameter: OutputParameter
     continue_on_failure: bool = False
     model: dict[str, Any] | None = None
+    symbolic_config: SymbolicPlanConfig | dict[str, Any] | None = None
 
     @property
     def override_llm_key(self) -> str | None:
