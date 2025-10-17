@@ -26,6 +26,7 @@ import { WorkflowRunOutput } from "./routes/workflows/workflowRun/WorkflowRunOut
 import { WorkflowRunOverview } from "./routes/workflows/workflowRun/WorkflowRunOverview";
 import { WorkflowRunRecording } from "./routes/workflows/workflowRun/WorkflowRunRecording";
 import { WorkflowRunCode } from "@/routes/workflows/workflowRun/WorkflowRunCode";
+import { BenchmarksPage } from "@/routes/benchmarks/BenchmarksPage";
 import { DebugStoreProvider } from "@/store/DebugStoreContext";
 
 const router = createBrowserRouter([
@@ -189,6 +190,16 @@ const router = createBrowserRouter([
           {
             index: true,
             element: <HistoryPage />,
+          },
+        ],
+      },
+      {
+        path: "benchmarks",
+        element: <PageLayout />,
+        children: [
+          {
+            index: true,
+            element: <BenchmarksPage />,
           },
         ],
       },

@@ -3,10 +3,11 @@ import { NavLinkGroup } from "@/components/NavLinkGroup";
 import { useSidebarStore } from "@/store/SidebarStore";
 import { cn } from "@/util/utils";
 import {
-  CounterClockwiseClockIcon,
-  GearIcon,
-  LightningBoltIcon,
-} from "@radix-ui/react-icons";
+   BarChartIcon,
+   CounterClockwiseClockIcon,
+   GearIcon,
+   LightningBoltIcon,
+ } from "@radix-ui/react-icons";
 
 function SideNav() {
   const { collapsed } = useSidebarStore();
@@ -34,6 +35,16 @@ function SideNav() {
             label: "History",
             to: "/history",
             icon: <CounterClockwiseClockIcon className="size-6" />,
+          },
+        ]}
+      />
+      <NavLinkGroup
+        title={"Insights"}
+        links={[
+          {
+            label: "Benchmarks",
+            to: "/benchmarks",
+            icon: <BarChartIcon className="size-6" />,
           },
         ]}
       />

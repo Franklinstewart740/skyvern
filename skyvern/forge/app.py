@@ -23,6 +23,7 @@ from skyvern.forge.sdk.trace import TraceManager
 from skyvern.forge.sdk.trace.lmnr import LaminarTrace
 from skyvern.forge.sdk.workflow.context_manager import WorkflowContextManager
 from skyvern.forge.sdk.workflow.service import WorkflowService
+from skyvern.services.llm_telemetry_service import LLMTelemetryService
 from skyvern.webeye.browser_manager import BrowserManager
 from skyvern.webeye.persistent_sessions_manager import PersistentSessionsManager
 from skyvern.webeye.scraper.scraper import ScrapeExcludeFunc
@@ -98,6 +99,7 @@ WORKFLOW_CONTEXT_MANAGER = WorkflowContextManager()
 WORKFLOW_SERVICE = WorkflowService()
 AGENT_FUNCTION = AgentFunction()
 PERSISTENT_SESSIONS_MANAGER = PersistentSessionsManager(database=DATABASE)
+LLM_TELEMETRY_SERVICE = LLMTelemetryService(session_maker=DATABASE.Session)
 
 BITWARDEN_CREDENTIAL_VAULT_SERVICE: BitwardenCredentialVaultService = BitwardenCredentialVaultService()
 AZURE_CREDENTIAL_VAULT_SERVICE: AzureCredentialVaultService | None = None
