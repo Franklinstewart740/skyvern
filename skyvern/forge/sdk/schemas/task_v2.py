@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from skyvern.config import settings
+from skyvern.forge.sdk.schemas.planning import ReasoningTrace, TaskPlan
 from skyvern.schemas.runs import ProxyLocation
 from skyvern.utils.url_validators import validate_url
 
@@ -53,6 +54,8 @@ class TaskV2(BaseModel):
     extra_http_headers: dict[str, str] | None = None
     browser_address: str | None = None
     run_with: str | None = None
+    plan: TaskPlan | None = None
+    reasoning_traces: list[ReasoningTrace] = Field(default_factory=list)
 
     created_at: datetime
     modified_at: datetime

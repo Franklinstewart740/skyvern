@@ -89,7 +89,7 @@ from skyvern.forge.sdk.workflow.models.block import ActionBlock, BaseTaskBlock, 
 from skyvern.forge.sdk.workflow.models.workflow import Workflow, WorkflowRun, WorkflowRunStatus
 from skyvern.schemas.runs import CUA_ENGINES, RunEngine
 from skyvern.schemas.steps import AgentStepOutput
-from skyvern.services import run_service, service_utils
+from skyvern.services import run_service, service_utils, task_planning_service
 from skyvern.services.action_service import get_action_history
 from skyvern.utils.image_resizer import Resolution
 from skyvern.utils.prompt_engine import MaxStepsReasonResponse, load_prompt_with_elements
@@ -280,6 +280,29 @@ class ForgeAgent:
             proxy_location=task.proxy_location,
             organization_id=organization_id,
         )
+
+        planner_prompt = (
+            task.navigation_goal
+            or task_request.navigation_goal
+            or task_request.data_extraction_goal
+            or task_request.title
+        )
+        try:
+            await task_planning_service.ensure_plan_for_task(
+                organization_id=organization_id,
+                task_id=task.task_id,
+                user_prompt=planner_prompt,
+                starting_url=task.url,
+                llm_key=task.llm_key,
+            )
+        except Exception:  # noqa: BLE001
+            LOG.debug(
+                "Failed to persist planning metadata for task",
+                task_id=task.task_id,
+                organization_id=organization_id,
+                exc_info=True,
+            )
+
         return task
 
     async def register_async_operations(self, organization: Organization, task: Task, page: Page) -> None:

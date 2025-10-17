@@ -6,7 +6,7 @@ from skyvern.forge import app
 from skyvern.forge.sdk.schemas.tasks import TaskStatus
 from skyvern.forge.sdk.workflow.models.workflow import WorkflowRunStatus
 from skyvern.schemas.runs import RunEngine, RunResponse, RunType, TaskRunRequest, TaskRunResponse
-from skyvern.services import task_v1_service, task_v2_service, workflow_service
+from skyvern.services import task_planning_service, task_v1_service, task_v2_service, workflow_service
 
 
 async def get_run_response(run_id: str, organization_id: str | None = None) -> RunResponse | None:
@@ -41,7 +41,7 @@ async def get_run_response(run_id: str, organization_id: str | None = None) -> R
         elif run.task_run_type == RunType.ui_tars:
             run_engine = RunEngine.ui_tars
 
-        return TaskRunResponse(
+        response = TaskRunResponse(
             run_id=run.run_id,
             run_type=run.task_run_type,
             status=str(task_v1_response.status),
@@ -71,6 +71,20 @@ async def get_run_response(run_id: str, organization_id: str | None = None) -> R
             ),
             errors=task_v1_response.errors,
         )
+
+        planning_artifacts = await task_planning_service.get_plan_and_traces(
+            task_id=run.run_id,
+            organization_id=run.organization_id or organization_id,
+        )
+        if planning_artifacts.plan or planning_artifacts.reasoning_traces:
+            response = response.model_copy(
+                update={
+                    "plan": planning_artifacts.plan,
+                    "reasoning_traces": planning_artifacts.reasoning_traces or None,
+                }
+            )
+
+        return response
     elif run.task_run_type == RunType.task_v2:
         task_v2 = await app.DATABASE.get_task_v2(run.run_id, organization_id=organization_id)
         if not task_v2:
