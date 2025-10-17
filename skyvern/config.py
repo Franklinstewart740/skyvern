@@ -12,6 +12,14 @@ class Settings(BaseSettings):
 
     ADDITIONAL_MODULES: list[str] = []
 
+    PLUGIN_AUTO_LOAD: bool = True
+    PLUGIN_MODULES: list[str] = ["skyvern.services.plugins.builtin"]
+    PLUGIN_DIRECTORIES: list[str] = []
+    PLUGIN_ENTRYPOINT_GROUPS: list[str] = ["skyvern.plugins"]
+
+    CONNECTOR_MODULES: list[str] = ["skyvern.services.plugins.connectors"]
+    CONNECTOR_ENTRYPOINT_GROUPS: list[str] = ["skyvern.connectors"]
+
     BROWSER_TYPE: str = "chromium-headful"
     BROWSER_REMOTE_DEBUGGING_URL: str = "http://127.0.0.1:9222"
     CHROME_EXECUTABLE_PATH: str | None = None
