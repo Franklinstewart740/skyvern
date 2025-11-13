@@ -297,6 +297,10 @@ function TaskDetails() {
             label: "Diagnostics",
             to: "diagnostics",
           },
+          {
+            label: "Agent Swarm",
+            to: "agent-swarm",
+          },
         ]}
       />
       <Outlet />
